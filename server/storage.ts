@@ -1,10 +1,11 @@
 import { 
-  users, routes, vehicles, schedules, bookings, messages,
+  users, routes, vehicles, schedules, bookings, subscriptions, messages,
   type User, type InsertUser,
   type Route, type InsertRoute,
   type Vehicle, type InsertVehicle,
   type Schedule, type InsertSchedule,
   type Booking, type InsertBooking,
+  type Subscription, type InsertSubscription,
   type Message, type InsertMessage,
   type RouteWithSchedules,
   type BookingWithDetails
@@ -50,6 +51,14 @@ export interface IStorage {
   getUserBookings(userId: number): Promise<BookingWithDetails[]>;
   getDriverBookings(driverId: number): Promise<BookingWithDetails[]>;
 
+  // Subscription operations
+  getSubscriptions(): Promise<Subscription[]>;
+  getSubscription(id: number): Promise<Subscription | undefined>;
+  createSubscription(subscription: InsertSubscription): Promise<Subscription>;
+  updateSubscription(id: number, updates: Partial<Subscription>): Promise<Subscription | undefined>;
+  getUserSubscriptions(userId: number): Promise<Subscription[]>;
+  getActiveSubscription(userId: number, routeId: number): Promise<Subscription | undefined>;
+
   // Message operations
   getMessages(): Promise<Message[]>;
   getMessage(id: number): Promise<Message | undefined>;
@@ -64,12 +73,14 @@ export class MemStorage implements IStorage {
   private vehicles: Map<number, Vehicle>;
   private schedules: Map<number, Schedule>;
   private bookings: Map<number, Booking>;
+  private subscriptions: Map<number, Subscription>;
   private messages: Map<number, Message>;
   private currentUserId: number;
   private currentRouteId: number;
   private currentVehicleId: number;
   private currentScheduleId: number;
   private currentBookingId: number;
+  private currentSubscriptionId: number;
   private currentMessageId: number;
 
   constructor() {
@@ -78,12 +89,14 @@ export class MemStorage implements IStorage {
     this.vehicles = new Map();
     this.schedules = new Map();
     this.bookings = new Map();
+    this.subscriptions = new Map();
     this.messages = new Map();
     this.currentUserId = 1;
     this.currentRouteId = 1;
     this.currentVehicleId = 1;
     this.currentScheduleId = 1;
     this.currentBookingId = 1;
+    this.currentSubscriptionId = 1;
     this.currentMessageId = 1;
 
     this.initializeData();
@@ -667,6 +680,72 @@ export class MemStorage implements IStorage {
       driverBookings.map(booking => this.getBookingWithDetails(booking.id))
     );
     return bookingsWithDetails.filter(Boolean) as BookingWithDetails[];
+  }
+
+  // Subscription operations
+  async getSubscriptions(): Promise<Subscription[]> {
+    return Array.from(this.subscriptions.values());
+  }
+
+  async getSubscription(id: number): Promise<Subscription | undefined> {
+    return this.subscriptions.get(id);
+  }
+
+  async createSubscription(insertSubscription: InsertSubscription): Promise<Subscription> {
+    const id = this.currentSubscriptionId++;
+    
+    // Calculate end date based on package type
+    const startDate = new Date(insertSubscription.startDate);
+    const endDate = new Date(startDate);
+    
+    switch (insertSubscription.packageType) {
+      case "1month":
+        endDate.setMonth(endDate.getMonth() + 1);
+        break;
+      case "3months":
+        endDate.setMonth(endDate.getMonth() + 3);
+        break;
+      case "6months":
+        endDate.setMonth(endDate.getMonth() + 6);
+        break;
+      case "12months":
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        break;
+    }
+
+    const subscription: Subscription = {
+      ...insertSubscription,
+      id,
+      endDate: endDate.toISOString().split('T')[0],
+      createdAt: new Date(),
+    };
+    
+    this.subscriptions.set(id, subscription);
+    return subscription;
+  }
+
+  async updateSubscription(id: number, updates: Partial<Subscription>): Promise<Subscription | undefined> {
+    const subscription = this.subscriptions.get(id);
+    if (!subscription) return undefined;
+    
+    const updatedSubscription = { ...subscription, ...updates };
+    this.subscriptions.set(id, updatedSubscription);
+    return updatedSubscription;
+  }
+
+  async getUserSubscriptions(userId: number): Promise<Subscription[]> {
+    return Array.from(this.subscriptions.values()).filter(sub => sub.userId === userId);
+  }
+
+  async getActiveSubscription(userId: number, routeId: number): Promise<Subscription | undefined> {
+    const today = new Date().toISOString().split('T')[0];
+    return Array.from(this.subscriptions.values()).find(sub => 
+      sub.userId === userId && 
+      sub.routeId === routeId && 
+      sub.status === "active" &&
+      sub.startDate <= today &&
+      sub.endDate >= today
+    );
   }
 
   // Message operations

@@ -247,6 +247,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Subscription routes
+  app.get("/api/subscriptions", async (req, res) => {
+    try {
+      const subscriptions = await storage.getSubscriptions();
+      res.json(subscriptions);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/subscriptions/user", async (req, res) => {
+    try {
+      const userId = parseInt(req.query.userId as string);
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required" });
+      }
+      const subscriptions = await storage.getUserSubscriptions(userId);
+      res.json(subscriptions);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/subscriptions", async (req, res) => {
+    try {
+      const subscriptionData = req.body;
+      const subscription = await storage.createSubscription(subscriptionData);
+      res.status(201).json(subscription);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Booking response routes for drivers
+  app.patch("/api/bookings/:id/driver-response", async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+      const { driverResponse, alternativePickup, alternativeDropoff, driverNotes } = req.body;
+      
+      const updatedBooking = await storage.updateBooking(bookingId, {
+        driverResponse,
+        alternativePickup,
+        alternativeDropoff,
+        driverNotes,
+        status: driverResponse === "accepted" ? "confirmed" : 
+                driverResponse === "alternative_offered" ? "driver_alternative" : "cancelled"
+      });
+      
+      if (!updatedBooking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      
+      res.json(updatedBooking);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // User response to driver alternatives
+  app.patch("/api/bookings/:id/user-response", async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.id);
+      const { userResponse } = req.body;
+      
+      const updatedBooking = await storage.updateBooking(bookingId, {
+        status: userResponse === "accepted" ? "confirmed" : "cancelled"
+      });
+      
+      if (!updatedBooking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+      
+      res.json(updatedBooking);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

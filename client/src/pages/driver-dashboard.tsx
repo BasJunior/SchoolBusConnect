@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/App";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Bus, Users, ArrowRight, AlertTriangle, X, Home } from "lucide-react";
+import { Bus, Users, ArrowRight, AlertTriangle, X, Home, MapPin, Clock } from "lucide-react";
 import type { BookingWithDetails } from "@shared/schema";
+import DriverBookingCard from "@/components/driver-booking-card";
 
 export default function DriverDashboard() {
   const { user } = useAuth();
@@ -20,6 +22,16 @@ export default function DriverDashboard() {
   const todayBookings = driverBookings?.filter(booking => 
     booking.travelDate === today && 
     (booking.status === "confirmed" || booking.status === "in_transit")
+  ) || [];
+  
+  // Filter pending bookings that need driver response
+  const pendingBookings = driverBookings?.filter(booking => 
+    booking.status === "pending"
+  ) || [];
+  
+  // Filter bookings with driver alternatives waiting for user response
+  const alternativeBookings = driverBookings?.filter(booking => 
+    booking.status === "driver_alternative"
   ) || [];
 
   const handleNextStop = () => {

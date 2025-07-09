@@ -54,13 +54,38 @@ export const bookings = pgTable("bookings", {
   scheduleId: integer("schedule_id").references(() => schedules.id).notNull(),
   pickupPoint: text("pickup_point").notNull(),
   dropoffPoint: text("dropoff_point").notNull(),
+  customPickupPoint: text("custom_pickup_point"), // User's custom pickup location
+  customDropoffPoint: text("custom_dropoff_point"), // User's custom dropoff location
+  pickupCoordinates: text("pickup_coordinates"), // "lat,lng" format
+  dropoffCoordinates: text("dropoff_coordinates"), // "lat,lng" format
   numberOfSeats: integer("number_of_seats").notNull().default(1),
   totalFare: decimal("total_fare", { precision: 10, scale: 2 }).notNull(),
-  status: text("status").notNull().default("confirmed"), // "confirmed" | "in_transit" | "completed" | "cancelled"
+  status: text("status").notNull().default("pending"), // "pending" | "confirmed" | "driver_alternative" | "in_transit" | "completed" | "cancelled"
+  driverResponse: text("driver_response"), // "accepted" | "alternative_offered" | "declined"
+  alternativePickup: text("alternative_pickup"), // Driver's alternative pickup suggestion
+  alternativeDropoff: text("alternative_dropoff"), // Driver's alternative dropoff suggestion
+  driverNotes: text("driver_notes"), // Driver's message to passenger
   paymentStatus: text("payment_status").notNull().default("pending"), // "pending" | "paid" | "refunded"
   paymentMethod: text("payment_method"),
   bookingDate: timestamp("booking_date").defaultNow(),
   travelDate: text("travel_date").notNull(), // YYYY-MM-DD format
+});
+
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  routeId: integer("route_id").references(() => routes.id).notNull(),
+  packageType: text("package_type").notNull(), // "1month" | "3months" | "6months" | "12months"
+  startDate: text("start_date").notNull(), // YYYY-MM-DD format
+  endDate: text("end_date").notNull(), // YYYY-MM-DD format
+  totalFare: decimal("total_fare", { precision: 10, scale: 2 }).notNull(),
+  discountApplied: decimal("discount_applied", { precision: 5, scale: 2 }).notNull().default("0.00"),
+  paymentMethod: text("payment_method").notNull(),
+  paymentStatus: text("payment_status").notNull().default("pending"), // "pending" | "paid" | "expired"
+  status: text("status").notNull().default("active"), // "active" | "paused" | "cancelled" | "expired"
+  ridesUsed: integer("rides_used").notNull().default(0),
+  maxRides: integer("max_rides").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const messages = pgTable("messages", {
@@ -97,6 +122,11 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
   bookingDate: true,
 });
 
+export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertMessageSchema = createInsertSchema(messages).omit({
   id: true,
   timestamp: true,
@@ -113,6 +143,8 @@ export type Schedule = typeof schedules.$inferSelect;
 export type InsertSchedule = z.infer<typeof insertScheduleSchema>;
 export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = z.infer<typeof insertBookingSchema>;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 
