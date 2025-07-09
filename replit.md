@@ -34,10 +34,10 @@ OmniRide is a full-stack web application for public transport booking, designed 
 - **Profile Management**: User profile updates and verification status
 
 ### Route Management
-- **Route Definition**: Origin, destination, pickup/dropoff points
-- **Route Types**: School, work, and general transport categories
-- **Fare Structure**: Base fare calculation with dynamic pricing
-- **Schedule Management**: Time-based scheduling with day-of-week patterns
+- **Route Definition**: Authentic Harare locations (CBD, Chitungwiza, Mbare, Avondale, etc.)
+- **Route Types**: School (UZ, MSU), work (Industrial Area, CBD), and general transport
+- **Fare Structure**: USD pricing ($1.50-$3.00) appropriate for Zimbabwe market
+- **Schedule Management**: Morning/afternoon focus with specialized night services for workers
 
 ### Booking System
 - **Seat Reservation**: Real-time seat availability checking
@@ -122,6 +122,11 @@ OmniRide is a full-stack web application for public transport booking, designed 
 ```
 Changelog:
 - July 07, 2025. Initial setup
+- July 09, 2025. Added authentic Harare routes and locations
+  - 6 routes covering major Harare areas: CBD, Chitungwiza, Mbare, Avondale, Borrowdale, Highfield, Warren Park, Industrial Area
+  - Realistic pickup/dropoff points based on actual Harare locations
+  - Schedule optimization: Morning/afternoon focus with night services for workers
+  - Proper fare structure in USD for Zimbabwe market
 ```
 
 ## User Preferences
