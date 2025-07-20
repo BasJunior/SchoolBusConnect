@@ -7,9 +7,10 @@ import type { BookingWithDetails, Route } from "@shared/schema";
 
 interface BottomSheetProps {
   onBookRide: () => void;
+  onSubscribe: () => void;
 }
 
-export default function BottomSheet({ onBookRide }: BottomSheetProps) {
+export default function BottomSheet({ onBookRide, onSubscribe }: BottomSheetProps) {
   const { user } = useAuth();
   
   const { data: userBookings, isLoading: bookingsLoading } = useQuery<BookingWithDetails[]>({
@@ -28,6 +29,11 @@ export default function BottomSheet({ onBookRide }: BottomSheetProps) {
   const today = new Date().toISOString().split('T')[0];
   const { data: availableSchedules } = useQuery({
     queryKey: ["/api/schedules/available", today],
+    queryFn: async () => {
+      const response = await fetch(`/api/schedules/available?date=${today}`);
+      if (!response.ok) throw new Error('Failed to fetch schedules');
+      return response.json();
+    },
   });
 
   return (
@@ -50,12 +56,13 @@ export default function BottomSheet({ onBookRide }: BottomSheetProps) {
             </span>
           </Button>
           <Button 
+            onClick={onSubscribe}
             variant="outline"
-            className="flex-1 py-3 px-4 rounded-xl font-medium"
+            className="flex-1 py-3 px-4 rounded-xl font-medium border-green-300 text-green-700 hover:bg-green-50"
           >
             <span className="flex items-center justify-center space-x-2">
               <Clock className="w-4 h-4" />
-              <span>Schedule</span>
+              <span>Subscribe</span>
             </span>
           </Button>
         </div>

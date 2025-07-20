@@ -35,6 +35,11 @@ export default function BookingModal({ isOpen, onClose }: BookingModalProps) {
   
   const { data: availableSchedules, isLoading } = useQuery({
     queryKey: ["/api/schedules/available", today],
+    queryFn: async () => {
+      const response = await fetch(`/api/schedules/available?date=${today}`);
+      if (!response.ok) throw new Error('Failed to fetch schedules');
+      return response.json();
+    },
     enabled: isOpen,
   });
 

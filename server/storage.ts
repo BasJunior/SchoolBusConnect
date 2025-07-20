@@ -425,7 +425,41 @@ export class MemStorage implements IStorage {
         arrivalTime: "22:10",
         daysOfWeek: ["monday", "tuesday", "wednesday", "thursday", "friday"],
         isActive: true,
-      }
+      },
+
+      // Weekend schedules for leisure/shopping
+      {
+        routeId: 2,
+        vehicleId: 2,
+        departureTime: "09:00",
+        arrivalTime: "09:25",
+        daysOfWeek: ["saturday", "sunday"],
+        isActive: true,
+      },
+      {
+        routeId: 2,
+        vehicleId: 2,
+        departureTime: "14:00",
+        arrivalTime: "14:25",
+        daysOfWeek: ["saturday", "sunday"],
+        isActive: true,
+      },
+      {
+        routeId: 3,
+        vehicleId: 3,
+        departureTime: "10:30",
+        arrivalTime: "10:50",
+        daysOfWeek: ["saturday", "sunday"],
+        isActive: true,
+      },
+      {
+        routeId: 3,
+        vehicleId: 3,
+        departureTime: "15:30",
+        arrivalTime: "15:50",
+        daysOfWeek: ["saturday", "sunday"],
+        isActive: true,
+      },
     ];
 
     demoSchedules.forEach(schedule => this.createSchedule(schedule));
