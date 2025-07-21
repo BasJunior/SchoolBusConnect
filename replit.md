@@ -127,6 +127,10 @@ Changelog:
   - Realistic pickup/dropoff points based on actual Harare locations
   - Schedule optimization: Morning/afternoon focus with night services for workers
   - Proper fare structure in USD for Zimbabwe market
+- July 21, 2025. Fixed deployment configuration issues
+  - Removed reusePort option from server configuration to resolve containerized environment compatibility
+  - Added /health endpoint for deployment health checks and monitoring
+  - Verified SESSION_SECRET environment variable is properly configured
 ```
 
 ## User Preferences

@@ -5,6 +5,15 @@ import { insertUserSchema, insertBookingSchema, insertMessageSchema } from "@sha
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint for deployment verification
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "healthy", 
+      timestamp: new Date().toISOString(),
+      service: "omnibus-transport-api" 
+    });
+  });
+
   // Auth routes
   app.post("/api/auth/register", async (req, res) => {
     try {

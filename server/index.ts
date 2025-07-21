@@ -36,6 +36,15 @@ app.use((req, res, next) => {
   next();
 });
 
+// Health check endpoint for deployment verification (before Vite middleware)
+app.get("/health", (req, res) => {
+  res.json({ 
+    status: "healthy", 
+    timestamp: new Date().toISOString(),
+    service: "omnibus-transport-api" 
+  });
+});
+
 (async () => {
   const server = await registerRoutes(app);
 
@@ -63,7 +72,6 @@ app.use((req, res, next) => {
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
   });
