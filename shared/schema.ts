@@ -9,9 +9,26 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   fullName: text("full_name").notNull(),
   phone: text("phone"),
+  profilePicture: text("profile_picture"), // URL or base64 encoded image
+  dateOfBirth: text("date_of_birth"), // YYYY-MM-DD format
+  gender: text("gender"), // "male" | "female" | "other" | "prefer_not_to_say"
+  address: text("address"),
+  city: text("city").default("Harare"),
+  emergencyContactName: text("emergency_contact_name"),
+  emergencyContactPhone: text("emergency_contact_phone"),
   userType: text("user_type").notNull().default("passenger"), // "passenger" | "driver" | "admin"
   isVerified: boolean("is_verified").default(false),
+  isActive: boolean("is_active").default(true),
+  // Driver-specific fields
+  licenseNumber: text("license_number"), // Required for drivers
+  licenseExpiryDate: text("license_expiry_date"), // YYYY-MM-DD format
+  experienceYears: integer("experience_years"), // Years of driving experience
+  rating: decimal("rating", { precision: 3, scale: 2 }).default("0.00"), // Average rating from passengers
+  totalTrips: integer("total_trips").default(0), // Total completed trips
+  profileCompleteness: integer("profile_completeness").default(0), // 0-100 percentage
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const routes = pgTable("routes", {
@@ -34,7 +51,20 @@ export const vehicles = pgTable("vehicles", {
   driverId: integer("driver_id").references(() => users.id),
   capacity: integer("capacity").notNull(),
   vehicleType: text("vehicle_type").notNull().default("omnibus"),
+  make: text("make"), // Toyota, Nissan, etc.
+  model: text("model"), // Hiace, Quantum, etc.
+  year: integer("year"), // Manufacturing year
+  color: text("color"),
+  fuelType: text("fuel_type").default("petrol"), // "petrol" | "diesel" | "electric" | "hybrid"
+  insuranceNumber: text("insurance_number"),
+  insuranceExpiryDate: text("insurance_expiry_date"), // YYYY-MM-DD format
+  lastServiceDate: text("last_service_date"), // YYYY-MM-DD format
+  roadworthyExpiryDate: text("roadworthy_expiry_date"), // YYYY-MM-DD format
+  features: text("features").array(), // ["air_conditioning", "wifi", "usb_charging", "music_system"]
+  vehiclePhotos: text("vehicle_photos").array(), // URLs to vehicle photos
   isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const schedules = pgTable("schedules", {
@@ -115,7 +145,11 @@ export const vehicleTracking = pgTable("vehicle_tracking", {
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   createdAt: true,
+  updatedAt: true,
+  lastActiveAt: true,
 });
+
+export const updateUserSchema = insertUserSchema.partial();
 
 export const insertRouteSchema = createInsertSchema(routes).omit({
   id: true,
@@ -123,6 +157,8 @@ export const insertRouteSchema = createInsertSchema(routes).omit({
 
 export const insertVehicleSchema = createInsertSchema(vehicles).omit({
   id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 export const insertScheduleSchema = createInsertSchema(schedules).omit({
@@ -153,6 +189,7 @@ export const insertVehicleTrackingSchema = createInsertSchema(vehicleTracking).o
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type Route = typeof routes.$inferSelect;
 export type InsertRoute = z.infer<typeof insertRouteSchema>;
 export type Vehicle = typeof vehicles.$inferSelect;

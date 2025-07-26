@@ -1,6 +1,6 @@
 import { 
   users, routes, vehicles, schedules, bookings, subscriptions, messages,
-  type User, type InsertUser,
+  type User, type InsertUser, type UpdateUser,
   type Route, type InsertRoute,
   type Vehicle, type InsertVehicle,
   type Schedule, type InsertSchedule,
@@ -17,7 +17,7 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: number, updates: Partial<User>): Promise<User | undefined>;
+  updateUser(id: number, updates: UpdateUser): Promise<User | undefined>;
 
   // Route operations
   getRoutes(): Promise<Route[]>;
