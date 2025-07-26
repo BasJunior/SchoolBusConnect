@@ -39,7 +39,7 @@ interface LocationPopupProps {
 function LocationPopup({ location, onClose, onBookRide }: LocationPopupProps) {
   // Fetch schedules for routes that include this location
   const { data: schedules, isLoading } = useQuery({
-    queryKey: ['/api/schedules/available'],
+    queryKey: ['/api/schedules/available', new Date().toISOString().split('T')[0]],
     enabled: true,
   });
 
@@ -206,7 +206,7 @@ export default function MapView({ onBookRide }: MapViewProps = {}) {
   
   // Fetch schedules and routes for schedule indicators
   const { data: schedules } = useQuery({
-    queryKey: ['/api/schedules/available'],
+    queryKey: ['/api/schedules/available', new Date().toISOString().split('T')[0]],
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
