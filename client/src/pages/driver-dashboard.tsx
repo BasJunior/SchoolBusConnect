@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Bus, Users, ArrowRight, AlertTriangle, X, Home, MapPin, Clock } from "lucide-react";
 import type { BookingWithDetails } from "@shared/schema";
 import DriverBookingCard from "@/components/driver-booking-card";
+import BottomNav from "@/components/bottom-nav";
 
 export default function DriverDashboard() {
   const { user } = useAuth();
@@ -65,7 +66,7 @@ export default function DriverDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white pb-16">
       {/* Driver Header */}
       <header className="bg-secondary text-white px-4 py-4 flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -186,6 +187,8 @@ export default function DriverDashboard() {
           </Button>
         </div>
       )}
+      
+      <BottomNav />
     </div>
   );
 }
