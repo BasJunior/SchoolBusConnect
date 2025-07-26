@@ -1,5 +1,6 @@
 import { useAuth } from "@/App";
 import MobileHeader from "@/components/mobile-header";
+import BottomNav from "@/components/bottom-nav";
 import MapView from "@/components/map-view";
 import BottomSheet from "@/components/bottom-sheet";
 import BottomNavigation from "@/components/bottom-navigation";
@@ -32,7 +33,7 @@ export default function Home() {
         onBookRide={() => setIsBookingModalOpen(true)}
         onSubscribe={() => setIsSubscriptionModalOpen(true)}
       />
-      <BottomNavigation />
+      <BottomNav />
       
       {isBookingModalOpen && (
         <EnhancedBookingModal 
