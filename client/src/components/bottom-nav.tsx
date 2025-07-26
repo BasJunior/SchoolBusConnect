@@ -14,7 +14,11 @@ export default function BottomNav() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 md:hidden">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 md:hidden"
+      role="navigation"
+      aria-label="Main navigation"
+    >
       <div className="flex justify-around items-center py-2">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -29,8 +33,10 @@ export default function BottomNav() {
                   ? "text-blue-600 bg-blue-50" 
                   : "text-gray-600 hover:text-gray-900"
               }`}
+              aria-label={`Navigate to ${item.label}`}
+              aria-current={isActive ? "page" : undefined}
             >
-              <Icon className="w-5 h-5 mb-1" />
+              <Icon className="w-5 h-5 mb-1" aria-hidden="true" />
               <span className="text-xs font-medium">{item.label}</span>
             </a>
           );

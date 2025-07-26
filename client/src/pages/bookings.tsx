@@ -145,7 +145,7 @@ export default function BookingsPage() {
     }
   };
 
-  const filteredBookings = filterBookings(bookings, selectedTab);
+  const filteredBookings = filterBookings(bookings as BookingWithDetails[], selectedTab);
 
   if (isLoading) {
     return (
@@ -167,21 +167,28 @@ export default function BookingsPage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <MobileHeader />
-      <div className="container mx-auto p-4 pb-20 space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Calendar className="w-6 h-6 text-blue-500" />
-          <h1 className="text-2xl font-bold">My Bookings</h1>
-        </div>
+      <main id="main-content" role="main" aria-label="Booking history and trip management" tabIndex={-1}>
+        <div className="container mx-auto p-4 pb-20 space-y-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Calendar className="w-6 h-6 text-blue-500" aria-hidden="true" />
+            <h1 className="text-2xl font-bold">My Bookings</h1>
+          </div>
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="active">Active</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4" role="tablist" aria-label="Filter bookings by status">
+          <TabsTrigger value="all" role="tab" aria-controls="bookings-all">All</TabsTrigger>
+          <TabsTrigger value="active" role="tab" aria-controls="bookings-active">Active</TabsTrigger>
+          <TabsTrigger value="completed" role="tab" aria-controls="bookings-completed">Completed</TabsTrigger>
+          <TabsTrigger value="cancelled" role="tab" aria-controls="bookings-cancelled">Cancelled</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={selectedTab} className="mt-6">
+        <TabsContent 
+          value={selectedTab} 
+          className="mt-6"
+          role="tabpanel"
+          id={`bookings-${selectedTab}`}
+          aria-labelledby={`tab-${selectedTab}`}
+        >
           {filteredBookings.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
@@ -362,8 +369,9 @@ export default function BookingsPage() {
             </div>
           )}
         </TabsContent>
-      </Tabs>
-      </div>
+        </Tabs>
+        </div>
+      </main>
       <BottomNav />
     </div>
   );

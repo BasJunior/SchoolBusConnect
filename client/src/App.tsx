@@ -3,6 +3,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "./lib/queryClient";
+import { AccessibilityProvider } from "@/contexts/accessibility-context";
+import AccessibilityToolbar from "@/components/accessibility-toolbar";
+import { useKeyboardNavigation, useFocusManagement } from "@/hooks/use-keyboard-navigation";
 import Login from "@/pages/login";
 import Home from "@/pages/home";
 import Routes from "@/pages/routes";
@@ -65,6 +68,10 @@ export function useAuth() {
 function AppRouter() {
   const { user, isLoading } = useAuth();
   const path = window.location.pathname;
+  
+  // Enable keyboard navigation and focus management
+  useKeyboardNavigation();
+  useFocusManagement();
 
   if (isLoading) {
     return (
@@ -102,10 +109,16 @@ function AppRouter() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <AppRouter />
-      </TooltipProvider>
+      <AccessibilityProvider>
+        <TooltipProvider>
+          <Toaster />
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+          <AppRouter />
+          <AccessibilityToolbar />
+        </TooltipProvider>
+      </AccessibilityProvider>
     </QueryClientProvider>
   );
 }
