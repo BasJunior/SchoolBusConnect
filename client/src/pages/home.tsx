@@ -29,7 +29,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50 pb-16">
       <MobileHeader />
       <main id="main-content" role="main" aria-label="OmniRide transport booking interface" tabIndex={-1}>
         <MapView onBookRide={handleMapBookRide} />

@@ -165,7 +165,7 @@ export default function BookingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-neutral-50 pb-16">
       <MobileHeader />
       <main id="main-content" role="main" aria-label="Booking history and trip management" tabIndex={-1}>
         <div className="container mx-auto p-4 pb-20 space-y-6">
