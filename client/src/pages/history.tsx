@@ -108,6 +108,14 @@ export default function History() {
                     }`}>
                       {booking.paymentStatus}
                     </div>
+                    {['confirmed', 'in_transit', 'driver_en_route', 'arrived_pickup', 'passenger_onboard', 'en_route_destination'].includes(booking.status) && (
+                      <button
+                        onClick={() => window.location.href = `/tracking?booking=${booking.id}`}
+                        className="text-xs text-blue-600 hover:text-blue-800 mt-1 block"
+                      >
+                        Track Live →
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

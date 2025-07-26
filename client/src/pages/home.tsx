@@ -3,7 +3,7 @@ import MobileHeader from "@/components/mobile-header";
 import MapView from "@/components/map-view";
 import BottomSheet from "@/components/bottom-sheet";
 import BottomNavigation from "@/components/bottom-navigation";
-import BookingModal from "@/components/booking-modal";
+import EnhancedBookingModal from "@/components/enhanced-booking-modal";
 import SubscriptionModal from "@/components/subscription-modal";
 import { useState } from "react";
 
@@ -29,7 +29,7 @@ export default function Home() {
       <BottomNavigation />
       
       {isBookingModalOpen && (
-        <BookingModal 
+        <EnhancedBookingModal 
           isOpen={isBookingModalOpen}
           onClose={() => setIsBookingModalOpen(false)}
         />

@@ -1,4 +1,4 @@
-import { Home, Route, History, User } from "lucide-react";
+import { Home, Route, History, MapPin, User } from "lucide-react";
 
 export default function BottomNavigation() {
   const location = window.location.pathname;
@@ -6,6 +6,7 @@ export default function BottomNavigation() {
   const navItems = [
     { icon: Home, label: "Home", path: "/" },
     { icon: Route, label: "Routes", path: "/routes" },
+    { icon: MapPin, label: "Track", path: "/tracking" },
     { icon: History, label: "History", path: "/history" },
     { icon: User, label: "Profile", path: "/profile" },
   ];
@@ -22,7 +23,7 @@ export default function BottomNavigation() {
           <button
             key={path}
             onClick={() => handleNavigation(path)}
-            className={`flex flex-col items-center py-2 px-4 transition-colors ${
+            className={`flex flex-col items-center py-1 px-2 transition-colors ${
               location === path
                 ? "text-primary"
                 : "text-neutral-400 hover:text-primary"

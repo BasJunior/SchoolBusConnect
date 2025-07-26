@@ -9,6 +9,7 @@ import Routes from "@/pages/routes";
 import History from "@/pages/history";
 import Profile from "@/pages/profile";
 import DriverDashboard from "@/pages/driver-dashboard";
+import TrackingPage from "@/pages/tracking";
 import NotFound from "@/pages/not-found";
 import type { User } from "@shared/schema";
 
@@ -82,6 +83,8 @@ function AppRouter() {
       return <Routes />;
     case '/history':
       return <History />;
+    case '/tracking':
+      return <TrackingPage />;
     case '/profile':
       return <Profile />;
     case '/driver':

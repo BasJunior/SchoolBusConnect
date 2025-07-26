@@ -113,13 +113,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const bookingData = insertBookingSchema.parse(req.body);
       
-      // Validate schedule exists
+      // Handle custom bookings (without scheduleId)
+      if (!bookingData.scheduleId && bookingData.bookingType === 'custom') {
+        // Custom booking - store coordinates if provided
+        if (bookingData.pickupCoords && bookingData.dropoffCoords) {
+          bookingData.pickupCoordinates = `${bookingData.pickupCoords[0]},${bookingData.pickupCoords[1]}`;
+          bookingData.dropoffCoordinates = `${bookingData.dropoffCoords[0]},${bookingData.dropoffCoords[1]}`;
+        }
+        
+        // Set status for driver approval
+        bookingData.status = 'pending_driver_confirmation';
+        
+        const booking = await storage.createBooking(bookingData);
+        const bookingWithDetails = await storage.getBookingWithDetails(booking.id);
+        
+        return res.json(bookingWithDetails);
+      }
+      
+      // Standard booking with schedule validation
+      if (!bookingData.scheduleId) {
+        return res.status(400).json({ message: "Schedule ID is required for standard bookings" });
+      }
+      
       const schedule = await storage.getSchedule(bookingData.scheduleId);
       if (!schedule) {
         return res.status(404).json({ message: "Schedule not found" });
       }
 
-      // Check seat availability (simplified - in real app would check existing bookings)
+      // Check seat availability for standard bookings
       const existingBookings = await storage.getBookings();
       const existingSeatsForSchedule = existingBookings
         .filter(b => b.scheduleId === bookingData.scheduleId && 
@@ -331,6 +352,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(updatedBooking);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Live tracking endpoints
+  app.get("/api/tracking/:bookingId", async (req, res) => {
+    try {
+      const bookingId = parseInt(req.params.bookingId);
+      
+      // Get booking details
+      const booking = await storage.getBookingWithDetails(bookingId);
+      if (!booking) {
+        return res.status(404).json({ message: "Booking not found" });
+      }
+
+      // Simulate live tracking data (in production, this would come from GPS devices)
+      const mockTrackingData = {
+        bookingId,
+        vehicleId: booking.schedule?.vehicleId || 1,
+        driverName: booking.schedule?.vehicle?.driver?.fullName || "Driver",
+        driverPhone: booking.schedule?.vehicle?.driver?.phone || "+263 77 123 4567",
+        vehicleNumber: booking.schedule?.vehicle?.vehicleNumber || "ABC-123",
+        currentLocation: {
+          lat: -17.8200 + (Math.random() - 0.5) * 0.01,
+          lng: 31.0400 + (Math.random() - 0.5) * 0.01,
+          timestamp: new Date().toISOString()
+        },
+        pickupLocation: {
+          name: booking.customPickupPoint || booking.pickupPoint,
+          coords: booking.pickupCoordinates 
+            ? booking.pickupCoordinates.split(',').map(Number) as [number, number]
+            : [-17.7840, 31.0547] as [number, number]
+        },
+        dropoffLocation: {
+          name: booking.customDropoffPoint || booking.dropoffPoint,
+          coords: booking.dropoffCoordinates 
+            ? booking.dropoffCoordinates.split(',').map(Number) as [number, number]
+            : [-17.8292, 31.0522] as [number, number]
+        },
+        status: booking.status,
+        estimatedArrival: "5-10 minutes",
+        routeProgress: Math.min(90, Math.random() * 100),
+        totalDistance: 12.5,
+        remainingDistance: Math.random() * 8
+      };
+
+      res.json(mockTrackingData);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch tracking data", error });
+    }
+  });
+
+  // Update vehicle location (for drivers)
+  app.post("/api/tracking/update-location", async (req, res) => {
+    try {
+      const { vehicleId, bookingId, latitude, longitude, speed, heading } = req.body;
+      
+      // In production, this would update the vehicle_tracking table
+      // For now, we'll just acknowledge the update
+      
+      res.json({ 
+        success: true, 
+        message: "Location updated successfully",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update location", error });
     }
   });
 

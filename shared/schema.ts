@@ -51,7 +51,7 @@ export const bookings = pgTable("bookings", {
   id: serial("id").primaryKey(),
   bookingNumber: text("booking_number").notNull().unique(),
   userId: integer("user_id").references(() => users.id).notNull(),
-  scheduleId: integer("schedule_id").references(() => schedules.id).notNull(),
+  scheduleId: integer("schedule_id").references(() => schedules.id),
   pickupPoint: text("pickup_point").notNull(),
   dropoffPoint: text("dropoff_point").notNull(),
   customPickupPoint: text("custom_pickup_point"), // User's custom pickup location
@@ -98,6 +98,19 @@ export const messages = pgTable("messages", {
   isRead: boolean("is_read").default(false),
 });
 
+export const vehicleTracking = pgTable("vehicle_tracking", {
+  id: serial("id").primaryKey(),
+  vehicleId: integer("vehicle_id").references(() => vehicles.id).notNull(),
+  bookingId: integer("booking_id").references(() => bookings.id),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
+  speed: decimal("speed", { precision: 5, scale: 2 }), // km/h
+  heading: integer("heading"), // degrees 0-360  
+  accuracy: decimal("accuracy", { precision: 8, scale: 2 }), // meters
+  timestamp: timestamp("timestamp").defaultNow(),
+  status: text("status").notNull().default("active"), // "active" | "idle" | "offline"
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -132,6 +145,11 @@ export const insertMessageSchema = createInsertSchema(messages).omit({
   timestamp: true,
 });
 
+export const insertVehicleTrackingSchema = createInsertSchema(vehicleTracking).omit({
+  id: true,
+  timestamp: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -147,6 +165,8 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = z.infer<typeof insertSubscriptionSchema>;
 export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
+export type VehicleTracking = typeof vehicleTracking.$inferSelect;
+export type InsertVehicleTracking = z.infer<typeof insertVehicleTrackingSchema>;
 
 // Additional types for API responses
 export type RouteWithSchedules = Route & {

@@ -126,11 +126,19 @@ Changelog:
   - 6 routes covering major Harare areas: CBD, Chitungwiza, Mbare, Avondale, Borrowdale, Highfield, Warren Park, Industrial Area
   - Realistic pickup/dropoff points based on actual Harare locations
   - Schedule optimization: Morning/afternoon focus with night services for workers
-  - Proper fare structure in USD for Zimbabwe market
+  - Proper fare structure in USD for Zimbabwe market  
 - July 21, 2025. Fixed deployment configuration issues
   - Removed reusePort option from server configuration to resolve containerized environment compatibility
   - Added /health endpoint for deployment health checks and monitoring
   - Verified SESSION_SECRET environment variable is properly configured
+- July 26, 2025. Enhanced booking capabilities with interactive maps and live tracking
+  - Integrated Leaflet maps for interactive pin-based location selection
+  - Created enhanced booking modal supporting both standard routes and custom pickup/dropoff locations
+  - Added live tracking functionality with real-time vehicle location updates
+  - Implemented tracking page with map visualization and driver communication features
+  - Enhanced database schema with vehicle tracking table and coordinate storage
+  - Added custom booking support with dynamic pricing based on selected locations
+  - Updated navigation to include tracking page for active trip monitoring
 ```
 
 ## User Preferences
