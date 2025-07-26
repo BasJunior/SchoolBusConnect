@@ -201,14 +201,34 @@ export default function EnhancedBookingModal({ isOpen, onClose }: BookingModalPr
     mutationFn: async (bookingData: any) => {
       return apiRequest("POST", "/api/bookings", bookingData);
     },
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings/user"] });
+      
       toast({
-        title: "Booking Confirmed",
+        title: "Booking Confirmed ✓",
         description: bookingMode === 'custom' 
-          ? "Your custom route booking has been submitted for driver confirmation"
-          : "Your seat has been reserved successfully",
+          ? "Your custom route booking has been submitted for driver confirmation. Tap here to view details."
+          : "Your seat has been reserved successfully. Tap here to view details.",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.href = '/bookings'}
+            className="bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
+            aria-label="View your booking details"
+          >
+            View Booking
+          </Button>
+        ),
       });
+      
+      // Auto-navigate to bookings page after 3 seconds if user doesn't interact
+      setTimeout(() => {
+        if (window.location.pathname === '/') {
+          window.location.href = '/bookings';
+        }
+      }, 3000);
+      
       onClose();
       resetForm();
     },

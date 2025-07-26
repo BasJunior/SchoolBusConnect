@@ -207,7 +207,26 @@ export default function BookingsPage() {
           ) : (
             <div className="space-y-4">
               {filteredBookings.map((booking) => (
-                <Card key={booking.id} className="hover:shadow-md transition-shadow">
+                <Card 
+                  key={booking.id} 
+                  className="hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => {
+                    if (booking.status === 'active' || booking.status === 'confirmed') {
+                      window.location.href = `/tracking?bookingId=${booking.id}`;
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`View details for ${booking.schedule?.route?.name || 'custom route'} trip on ${booking.travelDate}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (booking.status === 'active' || booking.status === 'confirmed') {
+                        window.location.href = `/tracking?bookingId=${booking.id}`;
+                      }
+                    }
+                  }}
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
@@ -337,8 +356,16 @@ export default function BookingsPage() {
 
                     {/* Action Buttons */}
                     <div className="flex gap-2 pt-4 border-t">
-                      {booking.status === 'confirmed' && (
-                        <Button size="sm" variant="outline" className="flex items-center gap-2">
+                      {(booking.status === 'confirmed' || booking.status === 'active') && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex items-center gap-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.location.href = `/tracking?bookingId=${booking.id}`;
+                          }}
+                        >
                           <Navigation className="w-4 h-4" />
                           Track Trip
                         </Button>
