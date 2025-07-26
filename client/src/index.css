@@ -1,6 +1,29 @@
+/* Leaflet CSS import for maps - must be first */
+@import "leaflet/dist/leaflet.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Map fixes for responsive design */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  z-index: 0;
+}
+
+.leaflet-control-container {
+  z-index: 1000;
+}
+
+.leaflet-popup-pane {
+  z-index: 1001;
+}
+
+/* Fix for leaflet marker icons */
+.leaflet-default-icon-path {
+  background-image: url('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png');
+}
 
 :root {
   --background: hsl(0, 0%, 100%);

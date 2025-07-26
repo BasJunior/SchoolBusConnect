@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import InteractiveMap from "./interactive-map";
+import FallbackMap from "./fallback-map";
 
 interface LocationData {
   name: string;
@@ -70,6 +71,9 @@ export default function EnhancedBookingModal({ isOpen, onClose }: BookingModalPr
   const [customFare, setCustomFare] = useState<number>(0);
   const [estimatedTime, setEstimatedTime] = useState<number>(0);
   const [routeDistance, setRouteDistance] = useState<number>(0);
+
+  // Map error handling
+  const [mapError, setMapError] = useState<boolean>(false);
 
   const today = new Date().toISOString().split('T')[0];
   
@@ -520,14 +524,49 @@ export default function EnhancedBookingModal({ isOpen, onClose }: BookingModalPr
           {/* Right Panel - Interactive Map (only for custom mode) */}
           {bookingMode === 'custom' && (
             <div className="lg:w-1/2 h-full">
-              <InteractiveMap
-                onPickupSelect={handlePickupSelect}
-                onDropoffSelect={handleDropoffSelect}
-                selectedPickup={pickupLocation}
-                selectedDropoff={dropoffLocation}
-                mode={mapMode}
-                className="h-full"
-              />
+              {!mapError ? (
+                <div className="h-full">
+                  <InteractiveMap
+                    onPickupSelect={handlePickupSelect}
+                    onDropoffSelect={handleDropoffSelect}
+                    selectedPickup={pickupLocation}
+                    selectedDropoff={dropoffLocation}
+                    mode={mapMode}
+                    className="h-full"
+                  />
+                  <div className="mt-2 text-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMapError(true)}
+                      className="text-xs"
+                    >
+                      Use Location List
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full">
+                  <FallbackMap
+                    onPickupSelect={handlePickupSelect}
+                    onDropoffSelect={handleDropoffSelect}
+                    selectedPickup={pickupLocation}
+                    selectedDropoff={dropoffLocation}
+                    mode={mapMode}
+                    className="h-full"
+                  />
+                  <div className="mt-2 text-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setMapError(false)}
+                      className="text-xs"
+                    >
+                      Try Map View
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

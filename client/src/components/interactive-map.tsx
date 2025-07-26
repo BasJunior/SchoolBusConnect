@@ -4,8 +4,17 @@ import { Icon, LatLng } from "leaflet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Navigation, Bus, Calculator, Clock } from "lucide-react";
+import { MapPin, Navigation, Bus, Calculator, Clock, AlertCircle } from "lucide-react";
 import "leaflet/dist/leaflet.css";
+
+// Fix for default markers in react-leaflet
+import L from 'leaflet';
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
 
 // Harare coordinate bounds and key locations
 const HARARE_CENTER: [number, number] = [-17.8292, 31.0522];
@@ -103,10 +112,19 @@ export default function InteractiveMap({
 }: InteractiveMapProps) {
   const [mapCenter, setMapCenter] = useState<[number, number]>(HARARE_CENTER);
   const [isLoading, setIsLoading] = useState(true);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [routeDistance, setRouteDistance] = useState<number>(0);
   const [estimatedFare, setEstimatedFare] = useState<number>(0);
   const [estimatedTime, setEstimatedTime] = useState<number>(0);
   const mapRef = useRef<any>(null);
+
+  // Handle map loading
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Calculate route when both pickup and dropoff are selected
   useEffect(() => {
@@ -141,19 +159,48 @@ export default function InteractiveMap({
     }
   };
 
+  // Error fallback for map loading issues
+  if (mapError) {
+    return (
+      <div className={`relative ${className} bg-gray-100 rounded-lg flex items-center justify-center min-h-[400px]`}>
+        <div className="text-center p-6">
+          <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-700 mb-2">Map Loading Error</h3>
+          <p className="text-gray-500 mb-4">Unable to load the Harare map. Please try refreshing the page.</p>
+          <Button onClick={() => { setMapError(null); setIsLoading(true); }}>
+            Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`relative ${className}`}>
+      {/* Loading overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 rounded-lg">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+            <p className="text-sm text-gray-600">Loading Harare map...</p>
+          </div>
+        </div>
+      )}
       <MapContainer
         center={mapCenter}
         zoom={12}
-        className="h-full w-full rounded-lg"
-        bounds={HARARE_BOUNDS}
+        className="h-full w-full rounded-lg z-0"
+        maxBounds={HARARE_BOUNDS}
         ref={mapRef}
-        onLoad={() => setIsLoading(false)}
+        whenReady={() => setIsLoading(false)}
+        style={{ height: '400px', width: '100%' }}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          errorTileUrl="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+          onLoad={() => setIsLoading(false)}
+          onError={() => setMapError("Failed to load map tiles")}
         />
         
         {/* Location markers */}
@@ -295,15 +342,6 @@ export default function InteractiveMap({
         </div>
       </div>
 
-      {/* Loading overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center z-[1001] rounded-lg">
-          <div className="text-center">
-            <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-2"></div>
-            <p className="text-sm text-gray-600">Loading map...</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
