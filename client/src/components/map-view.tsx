@@ -1,8 +1,89 @@
-import { MapPin, Plus, Minus, Navigation, Bus, Building, GraduationCap } from "lucide-react";
+import { MapPin, Plus, Minus, Navigation, Bus, Building, GraduationCap, Route, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { useState } from "react";
 
-export default function MapView() {
+interface LocationPopupProps {
+  location: {
+    name: string;
+    type: string;
+    x: string;
+    y: string;
+    color: string;
+  };
+  onClose: () => void;
+  onBookRide: (fromLocation: string, toLocation?: string) => void;
+}
+
+function LocationPopup({ location, onClose, onBookRide }: LocationPopupProps) {
+  return (
+    <div className="absolute z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-4 min-w-[280px] max-w-[320px] backdrop-blur-sm" 
+         style={{ 
+           left: location.x, 
+           top: location.y,
+           transform: 'translate(-50%, -100%)',
+           marginTop: '-15px'
+         }}>
+      {/* Arrow pointing down */}
+      <div className="absolute bottom-[-9px] left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[10px] border-r-[10px] border-t-[10px] border-l-transparent border-r-transparent border-t-white drop-shadow-sm"></div>
+      
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <div className={`w-8 h-8 ${location.color} rounded-full border-2 border-white shadow-sm flex items-center justify-center flex-shrink-0`}>
+            {location.type === 'school' && <GraduationCap className="text-white w-4 h-4" />}
+            {location.type === 'work' && <Building className="text-white w-4 h-4" />}
+            {location.type === 'transport' && <Bus className="text-white w-4 h-4" />}
+            {['city', 'residential', 'commercial'].includes(location.type) && <MapPin className="text-white w-4 h-4" />}
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900 text-sm">{location.name}</h3>
+            <p className="text-xs text-gray-600 capitalize">{location.type} area</p>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClose} className="p-1 h-6 w-6 hover:bg-gray-100">
+          <X className="w-3 h-3" />
+        </Button>
+      </div>
+      
+      <div className="space-y-2">
+        <Button 
+          onClick={() => onBookRide(location.name)}
+          className="w-full bg-primary text-white hover:bg-primary/90 flex items-center gap-2 h-9"
+          size="sm"
+        >
+          <Route className="w-4 h-4" />
+          Book Ride From Here
+        </Button>
+        
+        <Button 
+          onClick={() => onBookRide('', location.name)}
+          variant="outline"
+          className="w-full flex items-center gap-2 h-9 hover:bg-gray-50"
+          size="sm"
+        >
+          <MapPin className="w-4 h-4" />
+          Book Ride To Here
+        </Button>
+      </div>
+      
+      <div className="mt-3 pt-3 border-t border-gray-100">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <Clock className="w-3 h-3" />
+          <span>Tap any location to see available routes</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface MapViewProps {
+  onBookRide?: (fromLocation?: string, toLocation?: string) => void;
+}
+
+export default function MapView({ onBookRide }: MapViewProps = {}) {
+  const [selectedLocation, setSelectedLocation] = useState<any | null>(null);
+  
   const harareLocations = [
     { name: "Harare CBD", type: "city", x: "45%", y: "40%", color: "bg-blue-600" },
     { name: "University of Zimbabwe", type: "school", x: "55%", y: "25%", color: "bg-green-600" },
@@ -14,6 +95,28 @@ export default function MapView() {
     { name: "Eastgate Mall", type: "commercial", x: "60%", y: "35%", color: "bg-teal-600" }
   ];
 
+  const handleLocationClick = (location: any) => {
+    setSelectedLocation(location);
+  };
+
+  const handleBookRide = (fromLocation?: string, toLocation?: string) => {
+    if (onBookRide) {
+      onBookRide(fromLocation, toLocation);
+    }
+    setSelectedLocation(null);
+  };
+
+  const handleClosePopup = () => {
+    setSelectedLocation(null);
+  };
+
+  // Close popup when clicking outside
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      setSelectedLocation(null);
+    }
+  };
+
   const routes = [
     { from: "45%,40%", to: "55%,25%", color: "stroke-blue-500" }, // CBD to UZ
     { from: "35%,55%", to: "60%,35%", color: "stroke-green-500" }, // Mbare to Eastgate
@@ -24,7 +127,10 @@ export default function MapView() {
   return (
     <main className="relative h-screen bg-slate-100">
       {/* Map Container */}
-      <div className="absolute inset-0 bg-gradient-to-br from-green-50 via-blue-50 to-yellow-50">
+      <div 
+        className="absolute inset-0 bg-gradient-to-br from-green-50 via-blue-50 to-yellow-50"
+        onClick={handleBackgroundClick}
+      >
         {/* Harare Map Background */}
         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm">
           <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
@@ -67,17 +173,18 @@ export default function MapView() {
         {harareLocations.map((location, index) => (
           <div 
             key={index}
-            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10"
+            className="absolute transform -translate-x-1/2 -translate-y-1/2 z-10 cursor-pointer"
             style={{ left: location.x, top: location.y }}
+            onClick={() => handleLocationClick(location)}
           >
-            <div className={`w-8 h-8 ${location.color} rounded-full border-3 border-white shadow-lg flex items-center justify-center`}>
+            <div className={`w-8 h-8 ${location.color} rounded-full border-3 border-white shadow-lg flex items-center justify-center hover:scale-110 transition-all duration-200 ${selectedLocation?.name === location.name ? 'ring-4 ring-blue-400 ring-opacity-50 scale-110' : ''}`}>
               {location.type === 'school' && <GraduationCap className="text-white w-4 h-4" />}
               {location.type === 'work' && <Building className="text-white w-4 h-4" />}
               {location.type === 'transport' && <Bus className="text-white w-4 h-4" />}
               {['city', 'residential', 'commercial'].includes(location.type) && <MapPin className="text-white w-4 h-4" />}
             </div>
             <div className="mt-1 text-center">
-              <Badge variant="secondary" className="text-xs px-1 py-0 bg-white/90 text-gray-800">
+              <Badge variant="secondary" className="text-xs px-1 py-0 bg-white/90 text-gray-800 hover:bg-white cursor-pointer">
                 {location.name}
               </Badge>
             </div>
@@ -96,6 +203,15 @@ export default function MapView() {
             </Badge>
           </div>
         </div>
+
+        {/* Location Popup */}
+        {selectedLocation && (
+          <LocationPopup
+            location={selectedLocation}
+            onClose={handleClosePopup}
+            onBookRide={handleBookRide}
+          />
+        )}
       </div>
 
       {/* Map Info Panel */}

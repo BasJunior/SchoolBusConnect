@@ -18,10 +18,16 @@ export default function Home() {
     return null;
   }
 
+  const handleMapBookRide = (fromLocation?: string, toLocation?: string) => {
+    // Open booking modal with pre-selected locations if provided
+    setIsBookingModalOpen(true);
+    // You could pass the location data to the modal if needed
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <MobileHeader />
-      <MapView />
+      <MapView onBookRide={handleMapBookRide} />
       <BottomSheet 
         onBookRide={() => setIsBookingModalOpen(true)}
         onSubscribe={() => setIsSubscriptionModalOpen(true)}
