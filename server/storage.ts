@@ -1,5 +1,5 @@
 import { 
-  users, routes, vehicles, schedules, bookings, subscriptions, messages,
+  users, routes, vehicles, schedules, bookings, subscriptions, messages, driverRoutes, driverAvailability,
   type User, type InsertUser, type UpdateUser,
   type Route, type InsertRoute,
   type Vehicle, type InsertVehicle,
@@ -7,8 +7,12 @@ import {
   type Booking, type InsertBooking,
   type Subscription, type InsertSubscription,
   type Message, type InsertMessage,
+  type DriverRoute, type InsertDriverRoute,
+  type DriverAvailability, type InsertDriverAvailability,
   type RouteWithSchedules,
-  type BookingWithDetails
+  type BookingWithDetails,
+  type DriverRouteWithDetails,
+  type AvailableDriver
 } from "@shared/schema";
 
 export interface IStorage {
@@ -65,6 +69,21 @@ export interface IStorage {
   createMessage(message: InsertMessage): Promise<Message>;
   getConversation(userId1: number, userId2: number): Promise<Message[]>;
   markMessageAsRead(id: number): Promise<Message | undefined>;
+
+  // Driver route operations
+  getDriverRoutes(driverId: number): Promise<DriverRoute[]>;
+  getDriverRoute(id: number): Promise<DriverRouteWithDetails | undefined>;
+  createDriverRoute(route: InsertDriverRoute): Promise<DriverRoute>;
+  updateDriverRoute(id: number, updates: Partial<DriverRoute>): Promise<DriverRoute | undefined>;
+  deleteDriverRoute(id: number): Promise<boolean>;
+  getActiveDriverRoutes(): Promise<DriverRouteWithDetails[]>;
+
+  // Driver availability operations
+  updateDriverAvailability(availability: InsertDriverAvailability): Promise<DriverAvailability>;
+  getDriverAvailability(driverId: number): Promise<DriverAvailability | undefined>;
+  getAvailableDriversInArea(lat: number, lng: number, radiusKm?: number): Promise<AvailableDriver[]>;
+  setDriverOnline(driverId: number, lat: number, lng: number): Promise<DriverAvailability>;
+  setDriverOffline(driverId: number): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -73,6 +92,8 @@ export class MemStorage implements IStorage {
   private vehicles: Map<number, Vehicle>;
   private schedules: Map<number, Schedule>;
   private bookings: Map<number, Booking>;
+  private driverRoutes: Map<number, DriverRoute>;
+  private driverAvailability: Map<number, DriverAvailability>;
   private subscriptions: Map<number, Subscription>;
   private messages: Map<number, Message>;
   private currentUserId: number;
@@ -82,6 +103,8 @@ export class MemStorage implements IStorage {
   private currentBookingId: number;
   private currentSubscriptionId: number;
   private currentMessageId: number;
+  private currentDriverRouteId: number;
+  private currentDriverAvailabilityId: number;
 
   constructor() {
     this.users = new Map();
@@ -89,6 +112,8 @@ export class MemStorage implements IStorage {
     this.vehicles = new Map();
     this.schedules = new Map();
     this.bookings = new Map();
+    this.driverRoutes = new Map();
+    this.driverAvailability = new Map();
     this.subscriptions = new Map();
     this.messages = new Map();
     this.currentUserId = 1;
@@ -98,6 +123,8 @@ export class MemStorage implements IStorage {
     this.currentBookingId = 1;
     this.currentSubscriptionId = 1;
     this.currentMessageId = 1;
+    this.currentDriverRouteId = 1;
+    this.currentDriverAvailabilityId = 1;
 
     this.initializeData();
   }
@@ -818,6 +845,180 @@ export class MemStorage implements IStorage {
     const updatedMessage = { ...message, isRead: true };
     this.messages.set(id, updatedMessage);
     return updatedMessage;
+  }
+
+  // Driver route operations
+  async getDriverRoutes(driverId: number): Promise<DriverRoute[]> {
+    return Array.from(this.driverRoutes.values()).filter(route => route.driverId === driverId);
+  }
+
+  async getDriverRoute(id: number): Promise<DriverRouteWithDetails | undefined> {
+    const route = this.driverRoutes.get(id);
+    if (!route) return undefined;
+    
+    const driver = this.users.get(route.driverId);
+    const vehicle = this.vehicles.get(route.vehicleId);
+    const availability = this.driverAvailability.get(route.driverId);
+    
+    if (!driver || !vehicle) return undefined;
+    
+    return {
+      ...route,
+      driver,
+      vehicle,
+      availability
+    };
+  }
+
+  async createDriverRoute(insertRoute: InsertDriverRoute): Promise<DriverRoute> {
+    const id = this.currentDriverRouteId++;
+    const route: DriverRoute = {
+      ...insertRoute,
+      id,
+      lastActiveAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.driverRoutes.set(id, route);
+    return route;
+  }
+
+  async updateDriverRoute(id: number, updates: Partial<DriverRoute>): Promise<DriverRoute | undefined> {
+    const route = this.driverRoutes.get(id);
+    if (!route) return undefined;
+    
+    const updatedRoute = { ...route, ...updates, updatedAt: new Date() };
+    this.driverRoutes.set(id, updatedRoute);
+    return updatedRoute;
+  }
+
+  async deleteDriverRoute(id: number): Promise<boolean> {
+    return this.driverRoutes.delete(id);
+  }
+
+  async getActiveDriverRoutes(): Promise<DriverRouteWithDetails[]> {
+    const activeRoutes = Array.from(this.driverRoutes.values()).filter(route => route.isActive);
+    const routesWithDetails: DriverRouteWithDetails[] = [];
+    
+    for (const route of activeRoutes) {
+      const driver = this.users.get(route.driverId);
+      const vehicle = this.vehicles.get(route.vehicleId);
+      const availability = this.driverAvailability.get(route.driverId);
+      
+      if (driver && vehicle) {
+        routesWithDetails.push({
+          ...route,
+          driver,
+          vehicle,
+          availability
+        });
+      }
+    }
+    
+    return routesWithDetails;
+  }
+
+  // Driver availability operations
+  async updateDriverAvailability(insertAvailability: InsertDriverAvailability): Promise<DriverAvailability> {
+    const existingAvailability = Array.from(this.driverAvailability.values())
+      .find(a => a.driverId === insertAvailability.driverId);
+    
+    if (existingAvailability) {
+      const updatedAvailability = { 
+        ...existingAvailability, 
+        ...insertAvailability, 
+        lastLocationUpdate: new Date() 
+      };
+      this.driverAvailability.set(existingAvailability.id, updatedAvailability);
+      return updatedAvailability;
+    }
+    
+    const id = this.currentDriverAvailabilityId++;
+    const availability: DriverAvailability = {
+      ...insertAvailability,
+      id,
+      lastLocationUpdate: new Date(),
+      onlineAt: insertAvailability.status === "online" ? new Date() : null,
+      offlineAt: insertAvailability.status === "offline" ? new Date() : null,
+    };
+    
+    this.driverAvailability.set(id, availability);
+    return availability;
+  }
+
+  async getDriverAvailability(driverId: number): Promise<DriverAvailability | undefined> {
+    return Array.from(this.driverAvailability.values())
+      .find(a => a.driverId === driverId);
+  }
+
+  async getAvailableDriversInArea(lat: number, lng: number, radiusKm: number = 5): Promise<AvailableDriver[]> {
+    const availableDrivers: AvailableDriver[] = [];
+    
+    for (const availability of this.driverAvailability.values()) {
+      if (availability.status !== "online" || !availability.isAcceptingBookings) continue;
+      
+      // Calculate distance using Haversine formula
+      const distance = this.calculateDistance(lat, lng, 
+        parseFloat(availability.currentLatitude), parseFloat(availability.currentLongitude));
+      
+      if (distance <= radiusKm) {
+        const driver = this.users.get(availability.driverId);
+        const vehicle = this.vehicles.get(availability.vehicleId);
+        const routes = Array.from(this.driverRoutes.values())
+          .filter(r => r.driverId === availability.driverId && r.isActive);
+        
+        if (driver && vehicle) {
+          availableDrivers.push({
+            driver,
+            vehicle,
+            availability,
+            routes,
+            distance,
+            estimatedArrival: Math.ceil(distance * 2) // Rough estimate: 2 minutes per km
+          });
+        }
+      }
+    }
+    
+    return availableDrivers.sort((a, b) => a.distance - b.distance);
+  }
+
+  async setDriverOnline(driverId: number, lat: number, lng: number): Promise<DriverAvailability> {
+    const vehicle = Array.from(this.vehicles.values()).find(v => v.driverId === driverId);
+    if (!vehicle) throw new Error("No vehicle found for driver");
+    
+    return this.updateDriverAvailability({
+      driverId,
+      vehicleId: vehicle.id,
+      currentLatitude: lat.toString(),
+      currentLongitude: lng.toString(),
+      status: "online",
+      isAcceptingBookings: true,
+    });
+  }
+
+  async setDriverOffline(driverId: number): Promise<boolean> {
+    const availability = await this.getDriverAvailability(driverId);
+    if (!availability) return false;
+    
+    await this.updateDriverAvailability({
+      ...availability,
+      status: "offline",
+      isAcceptingBookings: false,
+    });
+    
+    return true;
+  }
+
+  private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   }
 }
 

@@ -23,12 +23,14 @@ import {
   Bell,
   Eye,
   Lock,
-  Smartphone
+  Smartphone,
+  Route
 } from "lucide-react";
 import { useAuth } from "@/App";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import DriverRouteConfig from "./driver-route-config";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -40,6 +42,7 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [isDriverRouteConfigOpen, setIsDriverRouteConfigOpen] = useState(false);
   const [editData, setEditData] = useState({
     fullName: user?.fullName || "",
     email: user?.email || "",
@@ -108,10 +111,15 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         </DialogHeader>
 
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className={`grid w-full ${user?.userType === "driver" ? "grid-cols-5" : "grid-cols-4"}`}>
             <TabsTrigger value="profile" className="text-xs">
               <User className="w-4 h-4" />
             </TabsTrigger>
+            {user?.userType === "driver" && (
+              <TabsTrigger value="routes" className="text-xs">
+                <Route className="w-4 h-4" />
+              </TabsTrigger>
+            )}
             <TabsTrigger value="rewards" className="text-xs">
               <Gift className="w-4 h-4" />
             </TabsTrigger>
@@ -224,6 +232,41 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
               </div>
             )}
           </TabsContent>
+
+          {/* Driver Routes Tab */}
+          {user?.userType === "driver" && (
+            <TabsContent value="routes" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Route className="w-5 h-5 text-blue-500" />
+                    Route Management
+                  </CardTitle>
+                  <CardDescription>
+                    Configure your routes and manage your availability
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="text-center">
+                      <Route className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p className="font-medium">Driver Route Configuration</p>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Set up your routes, schedules, and availability to receive targeted booking requests
+                      </p>
+                      <Button 
+                        onClick={() => setIsDriverRouteConfigOpen(true)}
+                        className="w-full"
+                      >
+                        <Route className="w-4 h-4 mr-2" />
+                        Configure Routes
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* Rewards Tab */}
           <TabsContent value="rewards" className="space-y-4">
@@ -408,6 +451,15 @@ export default function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
           </TabsContent>
         </Tabs>
       </DialogContent>
+
+      {/* Driver Route Configuration Modal */}
+      {user?.userType === "driver" && (
+        <DriverRouteConfig 
+          isOpen={isDriverRouteConfigOpen}
+          onClose={() => setIsDriverRouteConfigOpen(false)}
+          driverId={user.id}
+        />
+      )}
     </Dialog>
   );
 }

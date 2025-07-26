@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, updateUserSchema, insertBookingSchema, insertMessageSchema } from "@shared/schema";
+import { insertUserSchema, updateUserSchema, insertBookingSchema, insertMessageSchema, insertDriverRouteSchema, insertDriverAvailabilitySchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -453,6 +453,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: "Failed to update location", error });
+    }
+  });
+
+  // Driver Routes Management
+  app.get("/api/driver-routes/:driverId", async (req, res) => {
+    try {
+      const driverId = parseInt(req.params.driverId);
+      const routes = await storage.getDriverRoutes(driverId);
+      res.json(routes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch driver routes", error });
+    }
+  });
+
+  app.post("/api/driver-routes", async (req, res) => {
+    try {
+      const routeData = insertDriverRouteSchema.parse(req.body);
+      const route = await storage.createDriverRoute(routeData);
+      res.json(route);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to create driver route", error });
+    }
+  });
+
+  app.patch("/api/driver-routes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updates = req.body;
+      const route = await storage.updateDriverRoute(id, updates);
+      
+      if (!route) {
+        return res.status(404).json({ message: "Driver route not found" });
+      }
+      
+      res.json(route);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update driver route", error });
+    }
+  });
+
+  app.delete("/api/driver-routes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteDriverRoute(id);
+      
+      if (!deleted) {
+        return res.status(404).json({ message: "Driver route not found" });
+      }
+      
+      res.json({ message: "Driver route deleted successfully" });
+    } catch (error) {
+      res.status(400).json({ message: "Failed to delete driver route", error });
+    }
+  });
+
+  // Driver Availability Management
+  app.post("/api/driver-availability", async (req, res) => {
+    try {
+      const availabilityData = insertDriverAvailabilitySchema.parse(req.body);
+      const availability = await storage.updateDriverAvailability(availabilityData);
+      res.json(availability);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to update driver availability", error });
+    }
+  });
+
+  app.get("/api/driver-availability/:driverId", async (req, res) => {
+    try {
+      const driverId = parseInt(req.params.driverId);
+      const availability = await storage.getDriverAvailability(driverId);
+      
+      if (!availability) {
+        return res.status(404).json({ message: "Driver availability not found" });
+      }
+      
+      res.json(availability);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch driver availability", error });
+    }
+  });
+
+  app.post("/api/driver-availability/:driverId/online", async (req, res) => {
+    try {
+      const driverId = parseInt(req.params.driverId);
+      const { lat, lng } = req.body;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "Latitude and longitude are required" });
+      }
+      
+      const availability = await storage.setDriverOnline(driverId, lat, lng);
+      res.json(availability);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to set driver online", error });
+    }
+  });
+
+  app.post("/api/driver-availability/:driverId/offline", async (req, res) => {
+    try {
+      const driverId = parseInt(req.params.driverId);
+      const success = await storage.setDriverOffline(driverId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Driver availability not found" });
+      }
+      
+      res.json({ message: "Driver set offline successfully" });
+    } catch (error) {
+      res.status(400).json({ message: "Failed to set driver offline", error });
+    }
+  });
+
+  // Intelligent Booking Routing to Active Drivers
+  app.post("/api/bookings/find-drivers", async (req, res) => {
+    try {
+      const { lat, lng, radiusKm = 5 } = req.body;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "Latitude and longitude are required" });
+      }
+      
+      const availableDrivers = await storage.getAvailableDriversInArea(lat, lng, radiusKm);
+      res.json(availableDrivers);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to find available drivers", error });
+    }
+  });
+
+  app.get("/api/driver-routes/active", async (req, res) => {
+    try {
+      const activeRoutes = await storage.getActiveDriverRoutes();
+      res.json(activeRoutes);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch active driver routes", error });
     }
   });
 

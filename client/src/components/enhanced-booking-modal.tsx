@@ -47,6 +47,30 @@ interface Schedule {
   };
 }
 
+interface AvailableDriver {
+  driver: {
+    id: number;
+    fullName: string;
+    phone: string;
+    userType: string;
+  };
+  vehicle: {
+    id: number;
+    vehicleNumber: string;
+    capacity: number;
+    vehicleType: string;
+  };
+  availability: {
+    status: string;
+    isAcceptingBookings: boolean;
+    currentLatitude: string;
+    currentLongitude: string;
+  };
+  routes: any[];
+  distance: number;
+  estimatedArrival: number;
+}
+
 export default function EnhancedBookingModal({ isOpen, onClose }: BookingModalProps) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -74,6 +98,11 @@ export default function EnhancedBookingModal({ isOpen, onClose }: BookingModalPr
 
   // Map error handling
   const [mapError, setMapError] = useState<boolean>(false);
+  
+  // Driver finding states
+  const [availableDrivers, setAvailableDrivers] = useState<AvailableDriver[]>([]);
+  const [selectedDriver, setSelectedDriver] = useState<AvailableDriver | null>(null);
+  const [findingDrivers, setFindingDrivers] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
   
@@ -125,6 +154,47 @@ export default function EnhancedBookingModal({ isOpen, onClose }: BookingModalPr
     const baseFare = 1.50;
     const perKmRate = 0.30;
     return Math.max(baseFare, baseFare + (distance * perKmRate));
+  };
+
+  // Find available drivers for custom bookings
+  const findAvailableDrivers = async () => {
+    if (!pickupLocation?.coords) {
+      toast({
+        title: "Location Required",
+        description: "Please select a pickup location to find available drivers.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setFindingDrivers(true);
+    try {
+      const response = await apiRequest("/api/bookings/find-drivers", {
+        method: "POST",
+        body: JSON.stringify({
+          lat: pickupLocation.coords[0],
+          lng: pickupLocation.coords[1],
+          radiusKm: 10
+        }),
+      });
+      
+      setAvailableDrivers(response as AvailableDriver[]);
+      
+      if (response.length === 0) {
+        toast({
+          title: "No Drivers Available",
+          description: "No active drivers found in your area. Try expanding your search or booking a scheduled route.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Search Failed", 
+        description: "Failed to find available drivers. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setFindingDrivers(false);
+    }
   };
 
   const bookingMutation = useMutation({

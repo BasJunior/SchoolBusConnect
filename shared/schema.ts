@@ -141,6 +141,51 @@ export const vehicleTracking = pgTable("vehicle_tracking", {
   status: text("status").notNull().default("active"), // "active" | "idle" | "offline"
 });
 
+// Driver-configured routes table
+export const driverRoutes = pgTable("driver_routes", {
+  id: serial("id").primaryKey(),
+  driverId: integer("driver_id").references(() => users.id).notNull(),
+  vehicleId: integer("vehicle_id").references(() => vehicles.id).notNull(),
+  name: text("name").notNull(),
+  origin: text("origin").notNull(),
+  destination: text("destination").notNull(),
+  originCoordinates: text("origin_coordinates").notNull(), // "lat,lng" format
+  destinationCoordinates: text("destination_coordinates").notNull(), // "lat,lng" format
+  pickupPoints: text("pickup_points").array().notNull(),
+  dropoffPoints: text("dropoff_points").array().notNull(),
+  pickupCoordinates: text("pickup_coordinates").array().notNull(), // Array of "lat,lng" strings
+  dropoffCoordinates: text("dropoff_coordinates").array().notNull(), // Array of "lat,lng" strings
+  baseFare: decimal("base_fare", { precision: 10, scale: 2 }).notNull(),
+  pricePerKm: decimal("price_per_km", { precision: 10, scale: 2 }).notNull().default("0.50"),
+  estimatedDuration: integer("estimated_duration").notNull(), // in minutes
+  maxSeats: integer("max_seats").notNull(),
+  daysOfWeek: text("days_of_week").array().notNull(), // ["monday", "tuesday", etc.]
+  departureTime: text("departure_time").notNull(), // HH:MM format
+  arrivalTime: text("arrival_time").notNull(), // HH:MM format
+  routeType: text("route_type").notNull(), // "school" | "work" | "general" | "custom"
+  serviceArea: text("service_area").notNull(), // Area name/description driver operates in
+  isActive: boolean("is_active").default(true),
+  isAvailable: boolean("is_available").default(true), // Driver availability status
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Driver availability tracking
+export const driverAvailability = pgTable("driver_availability", {
+  id: serial("id").primaryKey(),
+  driverId: integer("driver_id").references(() => users.id).notNull(),
+  vehicleId: integer("vehicle_id").references(() => vehicles.id).notNull(),
+  currentLatitude: decimal("current_latitude", { precision: 10, scale: 7 }).notNull(),
+  currentLongitude: decimal("current_longitude", { precision: 10, scale: 7 }).notNull(),
+  serviceRadius: decimal("service_radius", { precision: 8, scale: 2 }).notNull().default("5.0"), // km radius
+  status: text("status").notNull().default("offline"), // "online" | "busy" | "offline"
+  isAcceptingBookings: boolean("is_accepting_bookings").default(true),
+  lastLocationUpdate: timestamp("last_location_update").defaultNow(),
+  onlineAt: timestamp("online_at"),
+  offlineAt: timestamp("offline_at"),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -186,6 +231,20 @@ export const insertVehicleTrackingSchema = createInsertSchema(vehicleTracking).o
   timestamp: true,
 });
 
+export const insertDriverRouteSchema = createInsertSchema(driverRoutes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastActiveAt: true,
+});
+
+export const insertDriverAvailabilitySchema = createInsertSchema(driverAvailability).omit({
+  id: true,
+  lastLocationUpdate: true,
+  onlineAt: true,
+  offlineAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -204,6 +263,10 @@ export type Message = typeof messages.$inferSelect;
 export type InsertMessage = z.infer<typeof insertMessageSchema>;
 export type VehicleTracking = typeof vehicleTracking.$inferSelect;
 export type InsertVehicleTracking = z.infer<typeof insertVehicleTrackingSchema>;
+export type DriverRoute = typeof driverRoutes.$inferSelect;
+export type InsertDriverRoute = z.infer<typeof insertDriverRouteSchema>;
+export type DriverAvailability = typeof driverAvailability.$inferSelect;
+export type InsertDriverAvailability = z.infer<typeof insertDriverAvailabilitySchema>;
 
 // Additional types for API responses
 export type RouteWithSchedules = Route & {
@@ -221,4 +284,19 @@ export type BookingWithDetails = Booking & {
       driver: User;
     };
   };
+};
+
+export type DriverRouteWithDetails = DriverRoute & {
+  driver: User;
+  vehicle: Vehicle;
+  availability?: DriverAvailability;
+};
+
+export type AvailableDriver = {
+  driver: User;
+  vehicle: Vehicle;
+  availability: DriverAvailability;
+  routes: DriverRoute[];
+  distance: number; // Distance from booking location in km
+  estimatedArrival: number; // Minutes
 };
