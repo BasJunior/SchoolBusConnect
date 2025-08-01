@@ -1,5 +1,5 @@
 import MobileHeader from "@/components/mobile-header";
-import BottomNavigation from "@/components/bottom-navigation";
+import BottomNav from "@/components/bottom-nav";
 import RouteCard from "@/components/route-card";
 import { useQuery } from "@tanstack/react-query";
 import { MapPin, Clock } from "lucide-react";
@@ -25,7 +25,7 @@ export default function Routes() {
             ))}
           </div>
         </div>
-        <BottomNavigation />
+        <BottomNav />
       </div>
     );
   }
@@ -105,7 +105,7 @@ export default function Routes() {
         </div>
       </div>
       
-      <BottomNavigation />
+      <BottomNav />
     </div>
   );
 }

@@ -81,7 +81,8 @@ function AppRouter() {
     );
   }
 
-  if (!user) {
+  // Allow homepage access without login for demonstration
+  if (!user && path !== "/" && path !== "/login") {
     return <Login />;
   }
 
@@ -99,6 +100,8 @@ function AppRouter() {
       return <Profile />;
     case '/driver':
       return <DriverDashboard />;
+    case '/login':
+      return <Login />;
     case '/':
       return <Home />;
     default:
