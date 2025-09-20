@@ -78,6 +78,11 @@ export default function DriverDashboard() {
             <p className="text-sm opacity-90">
               {currentRoute ? "Online - Route Active" : "Offline"}
             </p>
+            {pendingBookings.length > 0 && (
+              <p className="text-xs bg-red-500 bg-opacity-80 px-2 py-1 rounded-full mt-1">
+                {pendingBookings.length} booking{pendingBookings.length > 1 ? 's' : ''} need response
+              </p>
+            )}
           </div>
         </div>
         <Button 
@@ -85,6 +90,7 @@ export default function DriverDashboard() {
           size="sm" 
           className="w-8 h-8 p-0 bg-white bg-opacity-20 rounded-full text-white hover:bg-white hover:bg-opacity-30"
           onClick={handleCloseDriver}
+          aria-label="Go to home page"
         >
           <Home className="w-4 h-4" />
         </Button>

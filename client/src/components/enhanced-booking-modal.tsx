@@ -169,24 +169,28 @@ export default function EnhancedBookingModal({ isOpen, onClose }: BookingModalPr
 
     setFindingDrivers(true);
     try {
-      const response = await apiRequest("/api/bookings/find-drivers", {
-        method: "POST",
-        body: JSON.stringify({
-          lat: pickupLocation.coords[0],
-          lng: pickupLocation.coords[1],
-          radiusKm: 10
-        }),
+      const response = await apiRequest("POST", "/api/bookings/find-drivers", {
+        lat: pickupLocation.coords[0],
+        lng: pickupLocation.coords[1],
+        radiusKm: 10
       });
       
-      setAvailableDrivers(response as AvailableDriver[]);
+      const driversData = await response.json();
+      setAvailableDrivers(driversData);
       
-      if (response.length === 0) {
+      if (driversData.length === 0) {
         toast({
           title: "No Drivers Available",
           description: "No active drivers found in your area. Try expanding your search or booking a scheduled route.",
         });
+      } else {
+        toast({
+          title: "Drivers Found",
+          description: `Found ${driversData.length} available driver${driversData.length > 1 ? 's' : ''} in your area.`,
+        });
       }
     } catch (error) {
+      console.error('Find drivers error:', error);
       toast({
         title: "Search Failed", 
         description: "Failed to find available drivers. Please try again.",

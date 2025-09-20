@@ -96,8 +96,8 @@ app.get("/health", (req, res) => {
     serveStatic(app);
   }
 
-  // Use Railway's PORT environment variable or default to 5000
-  const port = process.env.PORT || 5000;
+  // Use Railway's PORT environment variable or default to 3001 for development
+  const port = process.env.PORT || 3001;
   server.listen({
     port,
     host: "0.0.0.0",

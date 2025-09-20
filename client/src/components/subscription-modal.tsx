@@ -62,21 +62,27 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
 
   const { data: routes } = useQuery({
     queryKey: ["/api/routes"],
+    queryFn: async () => {
+      const response = await fetch("/api/routes");
+      if (!response.ok) throw new Error('Failed to fetch routes');
+      return response.json();
+    }
   });
 
   const { data: userSubscriptions } = useQuery({
-    queryKey: ["/api/subscriptions/user"],
-    queryParams: { userId: user?.id },
+    queryKey: ["/api/subscriptions/user", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const response = await fetch(`/api/subscriptions/user?userId=${user.id}`);
+      if (!response.ok) throw new Error('Failed to fetch subscriptions');
+      return response.json();
+    },
     enabled: !!user?.id,
   });
 
   const subscriptionMutation = useMutation({
     mutationFn: async (subscriptionData: any) => {
-      return apiRequest("/api/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(subscriptionData),
-      });
+      return apiRequest("POST", "/api/subscriptions", subscriptionData);
     },
     onSuccess: () => {
       toast({
@@ -112,7 +118,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
       return;
     }
 
-    const route = routes?.find((r: any) => r.id === selectedRoute);
+    const route = Array.isArray(routes) ? routes.find((r: any) => r.id === selectedRoute) : null;
     if (!route) return;
 
     const packageInfo = subscriptionPackages.find(pkg => pkg.type === selectedPackage);
@@ -144,7 +150,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
       userId: user.id,
       routeId: selectedRoute,
       packageType: selectedPackage,
-      totalAmount: totalAmount.toFixed(2),
+      totalFare: totalAmount.toFixed(2),
       startDate: new Date().toISOString().split('T')[0],
       status: "active",
       paymentMethod,
@@ -190,7 +196,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
                 <SelectValue placeholder="Choose your regular route" />
               </SelectTrigger>
               <SelectContent className="max-h-[200px] overflow-y-auto">
-                {routes?.map((route: any) => (
+                {Array.isArray(routes) && routes.map((route: any) => (
                   <SelectItem key={route.id} value={route.id.toString()}>
                     <div className="flex flex-col py-1">
                       <span className="font-medium text-sm">{route.name}</span>
@@ -208,7 +214,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
               <Label className="text-sm font-medium text-neutral-700 mb-3 block">Choose Package</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {subscriptionPackages.map((pkg) => {
-                  const route = routes?.find((r: any) => r.id === selectedRoute);
+                  const route = Array.isArray(routes) ? routes.find((r: any) => r.id === selectedRoute) : null;
                   const packagePrice = route ? getPackagePrice(pkg.type, parseFloat(route.baseFare)) : 0;
                   const savings = route ? (parseFloat(route.baseFare) * (pkg.discount / 100)) : 0;
                   

@@ -127,8 +127,14 @@ export default function BookingsPage() {
   const { user } = useAuth();
   const [selectedTab, setSelectedTab] = useState("all");
 
-  const { data: bookings = [], isLoading } = useQuery({
+  const { data: bookings = [], isLoading, error } = useQuery({
     queryKey: [`/api/bookings/user/${user?.id}`],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const response = await fetch(`/api/bookings/user/${user.id}`);
+      if (!response.ok) throw new Error('Failed to fetch bookings');
+      return response.json();
+    },
     enabled: !!user?.id,
   });
 
@@ -160,6 +166,25 @@ export default function BookingsPage() {
             </Card>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <Card className="w-full max-w-md mx-4">
+          <CardContent className="pt-6 text-center">
+            <XCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Failed to Load Bookings</h2>
+            <p className="text-neutral-600 mb-4">
+              We couldn't load your bookings. Please check your connection and try again.
+            </p>
+            <Button onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }

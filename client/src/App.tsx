@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { queryClient } from "./lib/queryClient";
 import { AccessibilityProvider } from "@/contexts/accessibility-context";
 import AccessibilityToolbar from "@/components/accessibility-toolbar";
+import ErrorBoundary from "@/components/error-boundary";
 import { useKeyboardNavigation, useFocusManagement } from "@/hooks/use-keyboard-navigation";
 import Login from "@/pages/login";
 import Home from "@/pages/home";
@@ -111,18 +112,20 @@ function AppRouter() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AccessibilityProvider>
-        <TooltipProvider>
-          <Toaster />
-          <a href="#main-content" className="skip-link">
-            Skip to main content
-          </a>
-          <AppRouter />
-          <AccessibilityToolbar />
-        </TooltipProvider>
-      </AccessibilityProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AccessibilityProvider>
+          <TooltipProvider>
+            <Toaster />
+            <a href="#main-content" className="skip-link">
+              Skip to main content
+            </a>
+            <AppRouter />
+            <AccessibilityToolbar />
+          </TooltipProvider>
+        </AccessibilityProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

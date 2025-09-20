@@ -88,6 +88,7 @@ export const bookings = pgTable("bookings", {
   customDropoffPoint: text("custom_dropoff_point"), // User's custom dropoff location
   pickupCoordinates: text("pickup_coordinates"), // "lat,lng" format
   dropoffCoordinates: text("dropoff_coordinates"), // "lat,lng" format
+  bookingType: text("booking_type").notNull().default("standard"), // "standard" | "custom"
   numberOfSeats: integer("number_of_seats").notNull().default(1),
   totalFare: decimal("total_fare", { precision: 10, scale: 2 }).notNull(),
   status: text("status").notNull().default("pending"), // "pending" | "confirmed" | "driver_alternative" | "in_transit" | "completed" | "cancelled"
@@ -214,6 +215,9 @@ export const insertBookingSchema = createInsertSchema(bookings).omit({
   id: true,
   bookingNumber: true,
   bookingDate: true,
+}).extend({
+  pickupPoint: z.string().optional(),
+  dropoffPoint: z.string().optional(),
 });
 
 export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({

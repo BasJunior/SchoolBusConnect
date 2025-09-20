@@ -146,31 +146,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bookings
   app.post("/api/bookings", async (req, res) => {
     try {
-      const bookingData = insertBookingSchema.parse(req.body);
+      const { bookingType, ...bookingData } = req.body;
+      const validatedData = insertBookingSchema.parse(bookingData);
       
       // Handle custom bookings (without scheduleId)
-      if (!bookingData.scheduleId && bookingData.bookingType === 'custom') {
+      if (!validatedData.scheduleId && bookingType === 'custom') {
         // Custom booking - store coordinates if provided
-        if (bookingData.pickupCoords && bookingData.dropoffCoords) {
-          bookingData.pickupCoordinates = `${bookingData.pickupCoords[0]},${bookingData.pickupCoords[1]}`;
-          bookingData.dropoffCoordinates = `${bookingData.dropoffCoords[0]},${bookingData.dropoffCoords[1]}`;
+        if (req.body.pickupCoords && req.body.dropoffCoords) {
+          validatedData.pickupCoordinates = `${req.body.pickupCoords[0]},${req.body.pickupCoords[1]}`;
+          validatedData.dropoffCoordinates = `${req.body.dropoffCoords[0]},${req.body.dropoffCoords[1]}`;
         }
         
         // Set status for driver approval
-        bookingData.status = 'pending_driver_confirmation';
+        validatedData.status = 'pending_driver_confirmation';
         
-        const booking = await storage.createBooking(bookingData);
+        const booking = await storage.createBooking(validatedData);
         const bookingWithDetails = await storage.getBookingWithDetails(booking.id);
         
         return res.json(bookingWithDetails);
       }
       
       // Standard booking with schedule validation
-      if (!bookingData.scheduleId) {
+      if (!validatedData.scheduleId) {
         return res.status(400).json({ message: "Schedule ID is required for standard bookings" });
       }
       
-      const schedule = await storage.getSchedule(bookingData.scheduleId);
+      const schedule = await storage.getSchedule(validatedData.scheduleId);
       if (!schedule) {
         return res.status(404).json({ message: "Schedule not found" });
       }
@@ -178,8 +179,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check seat availability for standard bookings
       const existingBookings = await storage.getBookings();
       const existingSeatsForSchedule = existingBookings
-        .filter(b => b.scheduleId === bookingData.scheduleId && 
-                    b.travelDate === bookingData.travelDate &&
+        .filter(b => b.scheduleId === validatedData.scheduleId && 
+                    b.travelDate === validatedData.travelDate &&
                     b.status !== 'cancelled')
         .reduce((total, b) => total + b.numberOfSeats, 0);
 
@@ -188,11 +189,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Vehicle not found" });
       }
 
-      if (existingSeatsForSchedule + (bookingData.numberOfSeats || 1) > vehicle.capacity) {
+      if (existingSeatsForSchedule + (validatedData.numberOfSeats || 1) > vehicle.capacity) {
         return res.status(400).json({ message: "Not enough seats available" });
       }
 
-      const booking = await storage.createBooking(bookingData);
+      const booking = await storage.createBooking(validatedData);
       const bookingWithDetails = await storage.getBookingWithDetails(booking.id);
       
       res.json(bookingWithDetails);
