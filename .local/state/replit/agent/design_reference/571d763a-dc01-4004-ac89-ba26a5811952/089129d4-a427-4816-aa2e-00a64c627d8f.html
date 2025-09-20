@@ -1,0 +1,505 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OmniRide - Smart Commuter Transport</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#2563EB',
+                        'primary-dark': '#1D4ED8',
+                        'secondary': '#059669',
+                        'accent': '#DC2626',
+                        'neutral-50': '#F8FAFC',
+                        'neutral-400': '#94A3B8',
+                        'neutral-600': '#64748B',
+                        'neutral-800': '#1E293B'
+                    },
+                    fontFamily: {
+                        'inter': ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="font-inter bg-neutral-50 text-neutral-800">
+
+    <!-- @COMPONENT: MobileHeader -->
+    <header class="bg-white shadow-sm border-b border-gray-100 sticky top-0 z-50">
+        <div class="flex items-center justify-between px-4 py-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                    <i class="fas fa-bus text-white text-sm"></i>
+                </div>
+                <h1 class="text-lg font-semibold text-neutral-800">OmniRide</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button class="p-2 hover:bg-gray-100 rounded-lg transition-colors" data-event="click:openNotifications">
+                    <i class="fas fa-bell text-neutral-600"></i>
+                    <span class="sr-only">Notifications</span>
+                </button>
+                <button class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center" data-event="click:openProfile">
+                    <i class="fas fa-user text-neutral-600 text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: MobileHeader -->
+
+    <!-- @COMPONENT: MainMapView -->
+    <main class="relative h-screen bg-gray-100">
+        <!-- Map Container -->
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+            <!-- Simulated Map Background -->
+            <!-- A bird's eye view of city streets with bus routes marked in blue -->
+            <div class="absolute inset-0 opacity-20" style="background-image: url('https://images.unsplash.com/photo-1559827260-dc66d52bef19?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1200&h=800'); background-size: cover; background-position: center;"></div>
+            
+            <!-- Map Overlay Elements -->
+            <div class="relative w-full h-full">
+                <!-- Route Lines -->
+                <svg class="absolute inset-0 w-full h-full" style="z-index: 1;">
+                    <!-- @FUNCTIONALITY: Replace with real map route visualization -->
+                    <path d="M100 200 Q 300 100 500 300 T 800 400" stroke="#2563EB" stroke-width="4" fill="none" stroke-dasharray="10,5"/>
+                    <path d="M150 400 Q 350 300 550 500 T 850 600" stroke="#059669" stroke-width="4" fill="none"/>
+                </svg>
+
+                <!-- Bus Stop Markers -->
+                <div class="absolute top-1/4 left-1/4 w-6 h-6 bg-primary rounded-full border-4 border-white shadow-lg flex items-center justify-center" style="z-index: 2;">
+                    <i class="fas fa-map-marker-alt text-white text-xs"></i>
+                </div>
+                <div class="absolute top-1/2 right-1/3 w-6 h-6 bg-secondary rounded-full border-4 border-white shadow-lg flex items-center justify-center" style="z-index: 2;">
+                    <i class="fas fa-map-marker-alt text-white text-xs"></i>
+                </div>
+                <div class="absolute bottom-1/3 left-1/2 w-6 h-6 bg-primary rounded-full border-4 border-white shadow-lg flex items-center justify-center" style="z-index: 2;">
+                    <i class="fas fa-map-marker-alt text-white text-xs"></i>
+                </div>
+
+                <!-- Current Location -->
+                <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-accent rounded-full border-4 border-white shadow-lg animate-pulse" style="z-index: 3;"></div>
+            </div>
+        </div>
+
+        <!-- Map Controls -->
+        <div class="absolute top-20 right-4 flex flex-col space-y-2 z-10">
+            <button class="w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center hover:shadow-lg transition-shadow" data-event="click:zoomIn">
+                <i class="fas fa-plus text-neutral-600"></i>
+            </button>
+            <button class="w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center hover:shadow-lg transition-shadow" data-event="click:zoomOut">
+                <i class="fas fa-minus text-neutral-600"></i>
+            </button>
+            <button class="w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center hover:shadow-lg transition-shadow" data-event="click:centerLocation">
+                <i class="fas fa-location-arrow text-neutral-600"></i>
+            </button>
+        </div>
+    </main>
+    <!-- @END_COMPONENT: MainMapView -->
+
+    <!-- @COMPONENT: BottomSheet -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white rounded-t-xl shadow-2xl max-h-96 overflow-hidden z-20" data-mock="true">
+        <!-- Handle -->
+        <div class="flex justify-center py-2">
+            <div class="w-8 h-1 bg-gray-300 rounded-full"></div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="px-4 py-3 border-b border-gray-100">
+            <div class="flex space-x-3">
+                <button class="flex-1 bg-primary text-white py-3 px-4 rounded-xl font-medium flex items-center justify-center space-x-2 hover:bg-primary-dark transition-colors" data-event="click:bookRide">
+                    <i class="fas fa-plus"></i>
+                    <span>Book Ride</span>
+                </button>
+                <button class="flex-1 bg-gray-100 text-neutral-700 py-3 px-4 rounded-xl font-medium flex items-center justify-center space-x-2 hover:bg-gray-200 transition-colors" data-event="click:viewSchedule">
+                    <i class="fas fa-clock"></i>
+                    <span>Schedule</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Active Rides Section -->
+        <div class="px-4 py-4">
+            <h3 class="text-lg font-semibold text-neutral-800 mb-3">Active Rides</h3>
+            
+            <!-- @MAP: activeRides.map(ride => ( -->
+            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-3" data-mock="true">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                            <i class="fas fa-bus text-white text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-neutral-800" data-bind="ride.routeName">City Center → University</p>
+                            <p class="text-sm text-neutral-600" data-bind="ride.estimatedTime">Arriving in 8 mins</p>
+                        </div>
+                    </div>
+                    <span class="bg-secondary text-white px-3 py-1 rounded-full text-sm font-medium">On Route</span>
+                </div>
+                <div class="flex items-center justify-between text-sm">
+                    <span class="text-neutral-600">Bus #BUS-247</span>
+                    <span class="font-medium text-neutral-800" data-bind="ride.fare">$3.50</span>
+                </div>
+            </div>
+            <!-- @END_MAP )) -->
+
+            <!-- Next Available Routes -->
+            <h4 class="text-md font-medium text-neutral-700 mb-2 mt-4">Next Available</h4>
+            
+            <!-- @MAP: availableRoutes.map(route => ( -->
+            <div class="border border-gray-200 rounded-xl p-3 mb-2" data-mock="true">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <p class="font-medium text-neutral-800" data-bind="route.name">Downtown → Tech Park</p>
+                        <p class="text-sm text-neutral-600" data-bind="route.nextDeparture">Next: 15:30 (12 mins)</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-medium text-neutral-800" data-bind="route.fare">$4.25</p>
+                        <p class="text-sm text-secondary" data-bind="route.availability">8 seats left</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border border-gray-200 rounded-xl p-3 mb-2" data-mock="true">
+                <div class="flex items-center justify-between">
+                    <div class="flex-1">
+                        <p class="font-medium text-neutral-800" data-bind="route.name">Airport → Business District</p>
+                        <p class="text-sm text-neutral-600" data-bind="route.nextDeparture">Next: 15:45 (27 mins)</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-medium text-neutral-800" data-bind="route.fare">$5.75</p>
+                        <p class="text-sm text-secondary" data-bind="route.availability">12 seats left</p>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_MAP )) -->
+        </div>
+    </div>
+    <!-- @END_COMPONENT: BottomSheet -->
+
+    <!-- @COMPONENT: BookingModal [hidden by default] -->
+    <div id="bookingModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-end justify-center z-50 hidden" data-mock="true">
+        <div class="bg-white rounded-t-xl w-full max-w-md h-3/4 overflow-y-auto">
+            <!-- Modal Header -->
+            <div class="sticky top-0 bg-white border-b border-gray-100 px-4 py-4 flex items-center justify-between">
+                <h2 class="text-xl font-semibold text-neutral-800">Book Your Ride</h2>
+                <button class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center" data-event="click:closeBookingModal">
+                    <i class="fas fa-times text-neutral-600"></i>
+                </button>
+            </div>
+
+            <!-- Booking Form -->
+            <div class="p-4 space-y-6">
+                <!-- Route Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-2">Select Route</label>
+                    <div class="space-y-2">
+                        <button class="w-full text-left p-3 border border-gray-200 rounded-xl hover:border-primary transition-colors" data-event="click:selectRoute">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-medium text-neutral-800">City Center → University</p>
+                                    <p class="text-sm text-neutral-600">15:30 departure • 25 min journey</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="font-medium text-neutral-800">$3.50</p>
+                                    <p class="text-sm text-secondary">8 seats left</p>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pickup Point -->
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-2">Pickup Point</label>
+                    <select class="w-full p-3 border border-gray-200 rounded-xl focus:border-primary focus:outline-none" data-bind="selectedPickupPoint">
+                        <option>Central Station (Main Entrance)</option>
+                        <option>City Hall Bus Stop</option>
+                        <option>Shopping Mall North Gate</option>
+                    </select>
+                </div>
+
+                <!-- Drop-off Point -->
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-2">Drop-off Point</label>
+                    <select class="w-full p-3 border border-gray-200 rounded-xl focus:border-primary focus:outline-none" data-bind="selectedDropoffPoint">
+                        <option>University Main Gate</option>
+                        <option>Student Center</option>
+                        <option>Engineering Building</option>
+                        <option>Library Complex</option>
+                    </select>
+                </div>
+
+                <!-- Number of Seats -->
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-2">Number of Seats</label>
+                    <div class="flex items-center space-x-4">
+                        <button class="w-10 h-10 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50" data-event="click:decreaseSeats">
+                            <i class="fas fa-minus text-neutral-600"></i>
+                        </button>
+                        <span class="text-lg font-medium text-neutral-800" data-bind="selectedSeats">1</span>
+                        <button class="w-10 h-10 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50" data-event="click:increaseSeats">
+                            <i class="fas fa-plus text-neutral-600"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Fare Summary -->
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-neutral-600">Base Fare (1 seat)</span>
+                        <span class="text-neutral-800" data-bind="baseFare">$3.50</span>
+                    </div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-neutral-600">Service Fee</span>
+                        <span class="text-neutral-800" data-bind="serviceFee">$0.50</span>
+                    </div>
+                    <hr class="my-2">
+                    <div class="flex items-center justify-between font-semibold">
+                        <span class="text-neutral-800">Total</span>
+                        <span class="text-primary text-lg" data-bind="totalFare">$4.00</span>
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div>
+                    <label class="block text-sm font-medium text-neutral-700 mb-2">Payment Method</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
+                            <input type="radio" name="payment" value="card" class="mr-3" checked>
+                            <i class="fas fa-credit-card text-neutral-600 mr-3"></i>
+                            <span class="text-neutral-800">Credit Card ****1234</span>
+                        </label>
+                        <label class="flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
+                            <input type="radio" name="payment" value="wallet" class="mr-3">
+                            <i class="fas fa-wallet text-neutral-600 mr-3"></i>
+                            <span class="text-neutral-800">Digital Wallet ($12.50)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Booking Actions -->
+                <div class="space-y-3 pt-4">
+                    <button class="w-full bg-primary text-white py-4 rounded-xl font-semibold hover:bg-primary-dark transition-colors" data-event="click:confirmBooking">
+                        <span>Confirm Booking</span>
+                        <!-- @STATE: isBooking:boolean for loading state -->
+                    </button>
+                    <button class="w-full border border-gray-200 text-neutral-700 py-3 rounded-xl font-medium hover:bg-gray-50 transition-colors" data-event="click:saveForLater">
+                        Save for Later
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: BookingModal -->
+
+    <!-- @COMPONENT: BottomNavigation -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
+        <div class="flex items-center justify-around py-2">
+            <button class="flex flex-col items-center py-2 px-4 text-primary" data-event="click:navigateHome">
+                <i class="fas fa-home text-lg mb-1"></i>
+                <span class="text-xs font-medium">Home</span>
+            </button>
+            <button class="flex flex-col items-center py-2 px-4 text-neutral-400 hover:text-primary transition-colors" data-event="click:navigateRoutes">
+                <i class="fas fa-route text-lg mb-1"></i>
+                <span class="text-xs font-medium">Routes</span>
+            </button>
+            <button class="flex flex-col items-center py-2 px-4 text-neutral-400 hover:text-primary transition-colors" data-event="click:navigateHistory">
+                <i class="fas fa-history text-lg mb-1"></i>
+                <span class="text-xs font-medium">History</span>
+            </button>
+            <button class="flex flex-col items-center py-2 px-4 text-neutral-400 hover:text-primary transition-colors" data-event="click:navigateProfile">
+                <i class="fas fa-user text-lg mb-1"></i>
+                <span class="text-xs font-medium">Profile</span>
+            </button>
+        </div>
+    </nav>
+    <!-- @END_COMPONENT: BottomNavigation -->
+
+    <!-- @COMPONENT: DriverInterface [hidden by default] -->
+    <div id="driverInterface" class="fixed inset-0 bg-white z-50 hidden" data-mock="true">
+        <!-- Driver Header -->
+        <header class="bg-secondary text-white px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                    <i class="fas fa-bus text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-semibold">Driver Dashboard</h1>
+                    <p class="text-sm opacity-90" data-bind="driverStatus">Online - Route Active</p>
+                </div>
+            </div>
+            <button class="w-8 h-8 bg-white bg-opacity-20 rounded-full flex items-center justify-center" data-event="click:closeDriverInterface">
+                <i class="fas fa-times text-white"></i>
+            </button>
+        </header>
+
+        <!-- Current Route Info -->
+        <div class="p-4 bg-green-50 border-b border-green-200">
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="font-semibold text-neutral-800">Current Route</h3>
+                <span class="bg-secondary text-white px-3 py-1 rounded-full text-sm">Active</span>
+            </div>
+            <p class="text-neutral-700 font-medium" data-bind="currentRoute.name">City Center → University</p>
+            <p class="text-sm text-neutral-600" data-bind="currentRoute.schedule">Next Stop: Student Center (5 mins)</p>
+        </div>
+
+        <!-- Passenger List -->
+        <div class="flex-1 overflow-y-auto">
+            <div class="p-4">
+                <h3 class="text-lg font-semibold text-neutral-800 mb-3">Passengers (8)</h3>
+                
+                <!-- @MAP: passengers.map(passenger => ( -->
+                <div class="bg-white border border-gray-200 rounded-xl p-4 mb-3 shadow-sm" data-mock="true">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                <i class="fas fa-user text-neutral-600"></i>
+                            </div>
+                            <div>
+                                <p class="font-medium text-neutral-800" data-bind="passenger.name">John Smith</p>
+                                <p class="text-sm text-neutral-600" data-bind="passenger.pickup">Pickup: Central Station</p>
+                                <p class="text-sm text-neutral-600" data-bind="passenger.dropoff">Drop: University Main Gate</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm" data-bind="passenger.status">Boarded</span>
+                            <p class="text-sm text-neutral-600 mt-1" data-bind="passenger.fare">$3.50</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- @END_MAP )) -->
+            </div>
+        </div>
+
+        <!-- Driver Actions -->
+        <div class="p-4 bg-white border-t border-gray-200">
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <button class="bg-secondary text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity" data-event="click:nextStop">
+                    <i class="fas fa-arrow-right mr-2"></i>
+                    Next Stop
+                </button>
+                <button class="border border-gray-200 text-neutral-700 py-3 rounded-xl font-medium hover:bg-gray-50 transition-colors" data-event="click:emergency">
+                    <i class="fas fa-exclamation-triangle mr-2"></i>
+                    Emergency
+                </button>
+            </div>
+            <button class="w-full bg-accent text-white py-3 rounded-xl font-medium hover:opacity-90 transition-opacity" data-event="click:endRoute">
+                End Route
+            </button>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: DriverInterface -->
+
+    <!-- @COMPONENT: NotificationToast [hidden by default] -->
+    <div id="notificationToast" class="fixed top-20 left-4 right-4 bg-white border border-gray-200 rounded-xl shadow-lg p-4 z-50 hidden" data-mock="true">
+        <div class="flex items-start space-x-3">
+            <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="fas fa-check text-white text-sm"></i>
+            </div>
+            <div class="flex-1">
+                <p class="font-medium text-neutral-800" data-bind="notification.title">Booking Confirmed</p>
+                <p class="text-sm text-neutral-600" data-bind="notification.message">Your seat on City Center → University route has been reserved.</p>
+                <p class="text-xs text-neutral-500 mt-1" data-bind="notification.time">2 minutes ago</p>
+            </div>
+            <button class="text-neutral-400 hover:text-neutral-600" data-event="click:dismissNotification">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: NotificationToast -->
+
+    <script>
+        (function() {
+            // TODO: Implement proper state management and API integration
+            
+            // Demo interaction handlers
+            const bookingModal = document.getElementById('bookingModal');
+            const driverInterface = document.getElementById('driverInterface');
+            const notificationToast = document.getElementById('notificationToast');
+
+            // Modal controls
+            document.querySelector('[data-event="click:bookRide"]')?.addEventListener('click', () => {
+                bookingModal?.classList.remove('hidden');
+            });
+
+            document.querySelector('[data-event="click:closeBookingModal"]')?.addEventListener('click', () => {
+                bookingModal?.classList.add('hidden');
+            });
+
+            // Booking confirmation
+            document.querySelector('[data-event="click:confirmBooking"]')?.addEventListener('click', () => {
+                bookingModal?.classList.add('hidden');
+                notificationToast?.classList.remove('hidden');
+                
+                // Auto-hide notification after 5 seconds
+                setTimeout(() => {
+                    notificationToast?.classList.add('hidden');
+                }, 5000);
+            });
+
+            // Driver interface toggle (for demo purposes)
+            let driverModeActive = false;
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'D' && e.shiftKey) {
+                    driverModeActive = !driverModeActive;
+                    if (driverModeActive) {
+                        driverInterface?.classList.remove('hidden');
+                    } else {
+                        driverInterface?.classList.add('hidden');
+                    }
+                }
+            });
+
+            document.querySelector('[data-event="click:closeDriverInterface"]')?.addEventListener('click', () => {
+                driverInterface?.classList.add('hidden');
+                driverModeActive = false;
+            });
+
+            // Seat counter
+            let seatCount = 1;
+            const seatDisplay = document.querySelector('[data-bind="selectedSeats"]');
+            
+            document.querySelector('[data-event="click:increaseSeats"]')?.addEventListener('click', () => {
+                if (seatCount < 8) {
+                    seatCount++;
+                    if (seatDisplay) seatDisplay.textContent = seatCount.toString();
+                    updateFareDisplay();
+                }
+            });
+
+            document.querySelector('[data-event="click:decreaseSeats"]')?.addEventListener('click', () => {
+                if (seatCount > 1) {
+                    seatCount--;
+                    if (seatDisplay) seatDisplay.textContent = seatCount.toString();
+                    updateFareDisplay();
+                }
+            });
+
+            function updateFareDisplay() {
+                const baseFare = 3.50;
+                const serviceFee = 0.50;
+                const total = (baseFare * seatCount) + serviceFee;
+                
+                const totalFareElement = document.querySelector('[data-bind="totalFare"]');
+                if (totalFareElement) {
+                    totalFareElement.textContent = `$${total.toFixed(2)}`;
+                }
+            }
+
+            // Notification dismissal
+            document.querySelector('[data-event="click:dismissNotification"]')?.addEventListener('click', () => {
+                notificationToast?.classList.add('hidden');
+            });
+
+            // Initialize demo data
+            updateFareDisplay();
+        })();
+    </script>
+</body>
+</html>
