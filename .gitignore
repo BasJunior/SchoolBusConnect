@@ -43,3 +43,8 @@ tmp/
 
 # Cache
 .cache/
+
+# Replit/Development files
+.local/
+.config/
+replit.md
