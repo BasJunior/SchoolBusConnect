@@ -121,6 +121,35 @@ class RideMarketplace {
     return reservation;
   }
 
+  startRide(offerId: number, driverId: number): RideOffer {
+    const offer = this.offers.get(offerId);
+    if (!offer) throw new Error("Ride offer not found");
+    if (offer.driverId !== driverId) throw new Error("Ride does not belong to driver");
+    if (!["published", "sold_out"].includes(offer.status)) throw new Error("Ride cannot be started");
+
+    offer.status = "in_progress";
+    this.offers.set(offer.id, offer);
+    return offer;
+  }
+
+  completeRide(offerId: number, driverId: number): RideOffer {
+    const offer = this.offers.get(offerId);
+    if (!offer) throw new Error("Ride offer not found");
+    if (offer.driverId !== driverId) throw new Error("Ride does not belong to driver");
+    if (offer.status !== "in_progress") throw new Error("Only an in-progress ride can be completed");
+
+    offer.status = "completed";
+    this.offers.set(offer.id, offer);
+
+    for (const reservation of this.reservations.values()) {
+      if (reservation.offerId === offerId && reservation.status === "confirmed") {
+        reservation.status = "completed";
+        this.reservations.set(reservation.id, reservation);
+      }
+    }
+    return offer;
+  }
+
   cancelRide(offerId: number, driverId: number): RideOffer {
     const offer = this.offers.get(offerId);
     if (!offer) throw new Error("Ride offer not found");
