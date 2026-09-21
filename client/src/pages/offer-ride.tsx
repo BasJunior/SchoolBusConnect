@@ -1,12 +1,48 @@
 import { FormEvent, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { ArrowLeft, Car, ChevronRight } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { ArrowLeft, Car, ChevronRight, CreditCard, ExternalLink } from "lucide-react";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/App";
 import BVSBusBottomNav from "@/components/bvsbus-bottom-nav";
+import type { StripeConnectStatus } from "@shared/schema";
+
+type StripeEnvironmentStatus = {
+  configured: boolean;
+  mode: "test";
+  livePaymentsAllowed: false;
+};
 
 export default function OfferRide() {
   const { user } = useAuth();
+  const { data: stripeEnvironment } = useQuery<StripeEnvironmentStatus>({
+    queryKey: ["/api/stripe/status"],
+  });
+  const payoutStatusKey = `/api/stripe/connect/status/${user?.id || 0}`;
+  const { data: payoutStatus } = useQuery<StripeConnectStatus>({
+    queryKey: [payoutStatusKey],
+    enabled: !!user,
+  });
+
+  const startOnboarding = useMutation<{ onboardingUrl: string }, Error>({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/stripe/connect/onboard", { driverId: user!.id });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      window.location.href = data.onboardingUrl;
+    },
+  });
+
+  const openPayoutDashboard = useMutation<{ url: string }, Error>({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/stripe/connect/dashboard", { driverId: user!.id });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      window.location.href = data.url;
+    },
+  });
+
   const tomorrow = new Date(Date.now() + 86400000);
   const localDefault = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   const [form, setForm] = useState({
@@ -45,6 +81,11 @@ export default function OfferRide() {
     onSuccess: () => { window.location.href = "/trips"; },
   });
 
+  const stripeReturn = new URLSearchParams(window.location.search).get("stripe");
+  if ((stripeReturn === "return" || stripeReturn === "refresh") && payoutStatusKey) {
+    queryClient.invalidateQueries({ queryKey: [payoutStatusKey] });
+  }
+
   function submit(event: FormEvent) {
     event.preventDefault();
     publish.mutate();
@@ -61,6 +102,54 @@ export default function OfferRide() {
 
       <main id="main-content" className="mx-auto max-w-xl px-5 py-5">
         <form onSubmit={submit} className="space-y-4">
+          <section className="rounded-3xl bg-white p-5 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-neutral-100">
+                <CreditCard className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className="font-bold">Driver payouts</h2>
+                {!stripeEnvironment?.configured ? (
+                  <p className="mt-1 text-sm text-neutral-500">
+                    Stripe sandbox is not configured on this environment yet.
+                  </p>
+                ) : payoutStatus?.readyForPayouts ? (
+                  <>
+                    <p className="mt-1 text-sm text-green-700">Stripe test payouts are ready.</p>
+                    <button
+                      type="button"
+                      onClick={() => openPayoutDashboard.mutate()}
+                      disabled={openPayoutDashboard.isPending}
+                      className="mt-3 inline-flex items-center gap-2 rounded-full border border-neutral-300 px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                    >
+                      Open payout dashboard <ExternalLink className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-1 text-sm text-neutral-500">
+                      Complete Stripe test onboarding so BVSBus can release your ride contributions after completed trips.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => startOnboarding.mutate()}
+                      disabled={startOnboarding.isPending}
+                      className="mt-3 rounded-full bg-black px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                    >
+                      {startOnboarding.isPending ? "Opening Stripe…" : payoutStatus?.stripeAccountId ? "Continue payout setup" : "Set up payouts"}
+                    </button>
+                  </>
+                )}
+                {(startOnboarding.error || openPayoutDashboard.error) && (
+                  <p className="mt-3 text-xs text-red-700">
+                    {startOnboarding.error?.message || openPayoutDashboard.error?.message}
+                  </p>
+                )}
+                <p className="mt-3 text-[11px] text-neutral-400">Test mode only · no live money</p>
+              </div>
+            </div>
+          </section>
+
           <section className="rounded-3xl bg-white p-5 shadow-sm">
             <h2 className="mb-4 text-lg font-bold">Where are you driving?</h2>
             <div className="space-y-3">
