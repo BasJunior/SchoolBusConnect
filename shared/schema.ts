@@ -397,7 +397,7 @@ export type RideOffer = CreateRideOffer & {
   driverName: string;
   driverRating: number;
   seatsAvailable: number;
-  status: "published" | "sold_out" | "cancelled" | "completed";
+  status: "published" | "sold_out" | "in_progress" | "cancelled" | "completed";
   createdAt: string;
 };
 
