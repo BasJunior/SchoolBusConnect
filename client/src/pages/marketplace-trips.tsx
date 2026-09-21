@@ -7,6 +7,15 @@ import BVSBusBottomNav from "@/components/bvsbus-bottom-nav";
 
 type ReservationEntry = { reservation: RideReservation; offer: RideOffer };
 
+function paymentLabel(reservation: RideReservation) {
+  if (reservation.refundStatus === "pending") return "Refund pending";
+  if (reservation.paymentStatus === "refunded") return "Refunded";
+  if (reservation.paymentStatus === "paid") return "Paid";
+  if (reservation.paymentStatus === "pending") return "Payment pending";
+  if (reservation.paymentStatus === "failed") return "Payment failed";
+  return "Payment not collected";
+}
+
 export default function MarketplaceTrips() {
   const { user } = useAuth();
   const bookingsKey = `/api/ride-reservations/user/${user?.id || 0}`;
@@ -85,7 +94,9 @@ export default function MarketplaceTrips() {
                       <span className={reservation.status === "cancelled" ? "text-neutral-400" : "font-medium"}>
                         {reservation.seats} seat{reservation.seats > 1 ? "s" : ""} · {reservation.status === "cancelled" ? "Cancelled" : "Confirmed"}
                       </span>
-                      <p className="mt-1 text-xs text-neutral-500">{reservation.total.toFixed(2)} {reservation.currency}</p>
+                      <p className="mt-1 text-xs text-neutral-500">
+                        {reservation.total.toFixed(2)} {reservation.currency} · {paymentLabel(reservation)}
+                      </p>
                     </div>
 
                     {reservation.status === "confirmed" && (
