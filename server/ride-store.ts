@@ -144,6 +144,8 @@ class RideStore {
           total: total.toFixed(2),
           currency: updatedOffer.currency,
           status: "confirmed",
+          paymentStatus: "unpaid",
+          refundStatus: "not_required",
         })
         .returning();
 
@@ -187,7 +189,11 @@ class RideStore {
 
       await tx
         .update(rideReservations)
-        .set({ status: "cancelled", updatedAt: new Date() })
+        .set({
+          status: "cancelled",
+          refundStatus: sql`CASE WHEN ${rideReservations.paymentStatus} = 'paid' THEN 'pending' ELSE ${rideReservations.refundStatus} END`,
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(rideReservations.offerId, offerId),
@@ -220,7 +226,11 @@ class RideStore {
 
       const [cancelled] = await tx
         .update(rideReservations)
-        .set({ status: "cancelled", updatedAt: new Date() })
+        .set({
+          status: "cancelled",
+          refundStatus: sql`CASE WHEN ${rideReservations.paymentStatus} = 'paid' THEN 'pending' ELSE ${rideReservations.refundStatus} END`,
+          updatedAt: new Date(),
+        })
         .where(
           and(
             eq(rideReservations.id, reservationId),
@@ -251,6 +261,86 @@ class RideStore {
 
       return mapReservation(cancelled);
     });
+  }
+
+  async getReservation(reservationId: number): Promise<RideReservation | undefined> {
+    if (!this.isDatabaseBacked()) return rideMarketplace.getReservation(reservationId);
+
+    const db = await this.database();
+    const [row] = await db
+      .select()
+      .from(rideReservations)
+      .where(eq(rideReservations.id, reservationId))
+      .limit(1);
+
+    return row ? mapReservation(row) : undefined;
+  }
+
+  async attachPaymentIntent(reservationId: number, paymentIntentId: string): Promise<RideReservation> {
+    if (!this.isDatabaseBacked()) {
+      return rideMarketplace.attachPaymentIntent(reservationId, paymentIntentId);
+    }
+
+    const db = await this.database();
+    const [row] = await db
+      .update(rideReservations)
+      .set({
+        paymentProvider: "stripe",
+        paymentIntentId,
+        paymentStatus: "pending",
+        updatedAt: new Date(),
+      })
+      .where(eq(rideReservations.id, reservationId))
+      .returning();
+
+    if (!row) throw new Error("Reservation not found");
+    return mapReservation(row);
+  }
+
+  async markPaymentPaid(reservationId: number): Promise<RideReservation> {
+    if (!this.isDatabaseBacked()) return rideMarketplace.markPaymentPaid(reservationId);
+
+    const db = await this.database();
+    const [row] = await db
+      .update(rideReservations)
+      .set({ paymentStatus: "paid", updatedAt: new Date() })
+      .where(eq(rideReservations.id, reservationId))
+      .returning();
+
+    if (!row) throw new Error("Reservation not found");
+    return mapReservation(row);
+  }
+
+  async markPaymentFailed(reservationId: number): Promise<RideReservation> {
+    if (!this.isDatabaseBacked()) return rideMarketplace.markPaymentFailed(reservationId);
+
+    const db = await this.database();
+    const [row] = await db
+      .update(rideReservations)
+      .set({ paymentStatus: "failed", updatedAt: new Date() })
+      .where(eq(rideReservations.id, reservationId))
+      .returning();
+
+    if (!row) throw new Error("Reservation not found");
+    return mapReservation(row);
+  }
+
+  async markRefunded(reservationId: number): Promise<RideReservation> {
+    if (!this.isDatabaseBacked()) return rideMarketplace.markRefunded(reservationId);
+
+    const db = await this.database();
+    const [row] = await db
+      .update(rideReservations)
+      .set({
+        paymentStatus: "refunded",
+        refundStatus: "succeeded",
+        updatedAt: new Date(),
+      })
+      .where(eq(rideReservations.id, reservationId))
+      .returning();
+
+    if (!row) throw new Error("Reservation not found");
+    return mapReservation(row);
   }
 
   async reservationsForPassenger(passengerId: number) {
@@ -348,6 +438,10 @@ function mapReservation(row: RideReservationRow): RideReservation {
     total: Number(row.total),
     currency: row.currency,
     status: row.status as RideReservation["status"],
+    paymentStatus: row.paymentStatus as RideReservation["paymentStatus"],
+    paymentProvider: row.paymentProvider === "stripe" ? "stripe" : null,
+    paymentIntentId: row.paymentIntentId,
+    refundStatus: row.refundStatus as RideReservation["refundStatus"],
     createdAt: row.createdAt.toISOString(),
   };
 }
