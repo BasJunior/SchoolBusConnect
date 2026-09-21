@@ -304,3 +304,65 @@ export type AvailableDriver = {
   distance: number; // Distance from booking location in km
   estimatedArrival: number; // Minutes
 };
+
+
+// BVSBus peer-to-peer ride marketplace contracts.
+// These are API/domain schemas for the MVP. They intentionally do not require a DB migration
+// so the marketplace can be introduced alongside the existing BAS-BUS persistence model.
+export const createRideOfferSchema = z.object({
+  driverId: z.number().int().positive(),
+  origin: z.string().min(2),
+  destination: z.string().min(2),
+  departureAt: z.string().min(10),
+  seatsTotal: z.number().int().min(1).max(8),
+  pricePerSeat: z.number().positive(),
+  currency: z.string().length(3).default("EUR"),
+  vehicle: z.object({
+    make: z.string().min(1),
+    model: z.string().min(1),
+    color: z.string().optional(),
+    plate: z.string().optional(),
+  }),
+  preferences: z.object({
+    instantBooking: z.boolean().default(true),
+    luggage: z.enum(["small", "medium", "large"]).default("medium"),
+    petsAllowed: z.boolean().default(false),
+    smokingAllowed: z.boolean().default(false),
+  }).default({
+    instantBooking: true,
+    luggage: "medium",
+    petsAllowed: false,
+    smokingAllowed: false,
+  }),
+});
+
+export const reserveRideSchema = z.object({
+  passengerId: z.number().int().positive(),
+  seats: z.number().int().min(1).max(8).default(1),
+});
+
+export type CreateRideOffer = z.infer<typeof createRideOfferSchema>;
+export type ReserveRide = z.infer<typeof reserveRideSchema>;
+
+export type RideOffer = CreateRideOffer & {
+  id: number;
+  driverName: string;
+  driverRating: number;
+  seatsAvailable: number;
+  status: "published" | "sold_out" | "cancelled" | "completed";
+  createdAt: string;
+};
+
+export type RideReservation = {
+  id: number;
+  offerId: number;
+  passengerId: number;
+  passengerName: string;
+  seats: number;
+  rideSubtotal: number;
+  serviceFee: number;
+  total: number;
+  currency: string;
+  status: "confirmed" | "cancelled" | "completed";
+  createdAt: string;
+};
