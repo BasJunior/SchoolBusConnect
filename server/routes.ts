@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, updateUserSchema, insertBookingSchema, insertMessageSchema, insertDriverRouteSchema, insertDriverAvailabilitySchema } from "@shared/schema";
-import { z } from "zod";
+import { z } from "zod";\nimport { rideMarketplace } from "./ride-marketplace";\nimport { createRideOfferSchema, reserveRideSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment verification
@@ -589,6 +589,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch active driver routes", error });
     }
+  });
+
+
+  // BVSBus peer-to-peer ride marketplace
+  app.get("/api/ride-offers", async (req, res) => {
+    const seats = req.query.seats ? Number(req.query.seats) : undefined;
+    const offers = rideMarketplace.list({
+      from: typeof req.query.from === "string" ? req.query.from : undefined,
+      to: typeof req.query.to === "string" ? req.query.to : undefined,
+      date: typeof req.query.date === "string" ? req.query.date : undefined,
+      seats: Number.isFinite(seats) ? seats : undefined,
+    });
+    res.json(offers);
+  });
+
+  app.get("/api/ride-offers/driver/:driverId", async (req, res) => {
+    res.json(rideMarketplace.offersForDriver(Number(req.params.driverId)));
+  });
+
+  app.get("/api/ride-offers/:id", async (req, res) => {
+    const offer = rideMarketplace.get(Number(req.params.id));
+    if (!offer) return res.status(404).json({ message: "Ride offer not found" });
+    res.json(offer);
+  });
+
+  app.post("/api/ride-offers", async (req, res) => {
+    try {
+      const input = createRideOfferSchema.parse(req.body);
+      const driver = await storage.getUser(input.driverId);
+      if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+      const offer = rideMarketplace.createOffer(
+        input,
+        driver.fullName,
+        Number(driver.rating || 0),
+      );
+      res.status(201).json(offer);
+    } catch (error) {
+      res.status(400).json({ message: "Failed to publish ride", error });
+    }
+  });
+
+  app.post("/api/ride-offers/:id/reserve", async (req, res) => {
+    try {
+      const input = reserveRideSchema.parse(req.body);
+      const passenger = await storage.getUser(input.passengerId);
+      if (!passenger) return res.status(404).json({ message: "Passenger not found" });
+
+      const reservation = rideMarketplace.reserve(
+        Number(req.params.id),
+        input.passengerId,
+        passenger.fullName,
+        input.seats,
+      );
+      res.status(201).json(reservation);
+    } catch (error: any) {
+      const message = error?.message || "Failed to reserve ride";
+      res.status(message.includes("seats") ? 409 : 400).json({ message });
+    }
+  });
+
+  app.get("/api/ride-reservations/user/:userId", async (req, res) => {
+    res.json(rideMarketplace.reservationsForPassenger(Number(req.params.userId)));
+  });
+
+  app.get("/api/ride-reservations/driver/:driverId", async (req, res) => {
+    res.json(rideMarketplace.reservationsForDriver(Number(req.params.driverId)));
   });
 
   const httpServer = createServer(app);
