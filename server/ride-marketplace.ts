@@ -117,6 +117,27 @@ class RideMarketplace {
     return reservation;
   }
 
+  cancelRide(offerId: number, driverId: number): RideOffer {
+    const offer = this.offers.get(offerId);
+    if (!offer) throw new Error("Ride offer not found");
+    if (offer.driverId !== driverId) throw new Error("Ride does not belong to driver");
+    if (offer.status === "cancelled") return offer;
+    if (offer.status === "completed") throw new Error("Completed rides cannot be cancelled");
+
+    offer.status = "cancelled";
+    offer.seatsAvailable = offer.seatsTotal;
+    this.offers.set(offer.id, offer);
+
+    for (const reservation of this.reservations.values()) {
+      if (reservation.offerId === offerId && reservation.status === "confirmed") {
+        reservation.status = "cancelled";
+        this.reservations.set(reservation.id, reservation);
+      }
+    }
+
+    return offer;
+  }
+
   cancelReservation(reservationId: number, passengerId: number): RideReservation {
     const reservation = this.reservations.get(reservationId);
     if (!reservation) throw new Error("Reservation not found");
