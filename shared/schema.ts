@@ -232,6 +232,19 @@ export const rideReservations = pgTable("ride_reservations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const rideMessages = pgTable("ride_messages", {
+  id: serial("id").primaryKey(),
+  reservationId: integer("reservation_id").references(() => rideReservations.id, { onDelete: "cascade" }).notNull(),
+  offerId: integer("offer_id").references(() => rideOffers.id, { onDelete: "cascade" }).notNull(),
+  senderId: integer("sender_id").notNull(),
+  senderName: text("sender_name").notNull(),
+  receiverId: integer("receiver_id").notNull(),
+  receiverName: text("receiver_name").notNull(),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -321,6 +334,8 @@ export type RideOfferRow = typeof rideOffers.$inferSelect;
 export type InsertRideOfferRow = typeof rideOffers.$inferInsert;
 export type RideReservationRow = typeof rideReservations.$inferSelect;
 export type InsertRideReservationRow = typeof rideReservations.$inferInsert;
+export type RideMessageRow = typeof rideMessages.$inferSelect;
+export type InsertRideMessageRow = typeof rideMessages.$inferInsert;
 
 // Additional types for API responses
 export type RouteWithSchedules = Route & {
@@ -417,4 +432,30 @@ export type RideReservation = {
   paymentIntentId: string | null;
   refundStatus: "not_required" | "pending" | "succeeded" | "failed";
   createdAt: string;
+};
+
+
+export type RideMessage = {
+  id: number;
+  reservationId: number;
+  offerId: number;
+  senderId: number;
+  senderName: string;
+  receiverId: number;
+  receiverName: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
+export type RideConversationSummary = {
+  reservationId: number;
+  offerId: number;
+  origin: string;
+  destination: string;
+  counterpartId: number;
+  counterpartName: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
 };
