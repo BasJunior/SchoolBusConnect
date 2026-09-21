@@ -224,6 +224,10 @@ export const rideReservations = pgTable("ride_reservations", {
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   currency: text("currency").notNull().default("EUR"),
   status: text("status").notNull().default("confirmed"),
+  paymentStatus: text("payment_status").notNull().default("unpaid"),
+  paymentProvider: text("payment_provider"),
+  paymentIntentId: text("payment_intent_id"),
+  refundStatus: text("refund_status").notNull().default("not_required"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -352,9 +356,7 @@ export type AvailableDriver = {
 };
 
 
-// BVSBus peer-to-peer ride marketplace contracts.
-// These are API/domain schemas for the MVP. They intentionally do not require a DB migration
-// so the marketplace can be introduced alongside the existing BAS-BUS persistence model.
+// BVSBus peer-to-peer ride marketplace contracts shared by the API and client.
 export const createRideOfferSchema = z.object({
   driverId: z.number().int().positive(),
   origin: z.string().min(2),
