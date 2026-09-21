@@ -153,6 +153,69 @@ class RideStore {
     });
   }
 
+  async startRide(offerId: number, driverId: number): Promise<RideOffer> {
+    if (!this.isDatabaseBacked()) return rideMarketplace.startRide(offerId, driverId);
+
+    const db = await this.database();
+    const [row] = await db
+      .update(rideOffers)
+      .set({ status: "in_progress", updatedAt: new Date() })
+      .where(
+        and(
+          eq(rideOffers.id, offerId),
+          eq(rideOffers.driverId, driverId),
+          or(eq(rideOffers.status, "published"), eq(rideOffers.status, "sold_out")),
+        ),
+      )
+      .returning();
+
+    if (!row) {
+      const existing = await this.get(offerId);
+      if (!existing) throw new Error("Ride offer not found");
+      if (existing.driverId !== driverId) throw new Error("Ride does not belong to driver");
+      throw new Error("Ride cannot be started");
+    }
+    return mapOffer(row);
+  }
+
+  async completeRide(offerId: number, driverId: number): Promise<RideOffer> {
+    if (!this.isDatabaseBacked()) return rideMarketplace.completeRide(offerId, driverId);
+
+    const db = await this.database();
+    return db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(rideOffers)
+        .set({ status: "completed", updatedAt: new Date() })
+        .where(
+          and(
+            eq(rideOffers.id, offerId),
+            eq(rideOffers.driverId, driverId),
+            eq(rideOffers.status, "in_progress"),
+          ),
+        )
+        .returning();
+
+      if (!row) {
+        const [existing] = await tx.select().from(rideOffers).where(eq(rideOffers.id, offerId)).limit(1);
+        if (!existing) throw new Error("Ride offer not found");
+        if (existing.driverId !== driverId) throw new Error("Ride does not belong to driver");
+        throw new Error("Only an in-progress ride can be completed");
+      }
+
+      await tx
+        .update(rideReservations)
+        .set({ status: "completed", updatedAt: new Date() })
+        .where(
+          and(
+            eq(rideReservations.offerId, offerId),
+            eq(rideReservations.status, "confirmed"),
+          ),
+        );
+
+      return mapOffer(row);
+    });
+  }
+
   async cancelRide(offerId: number, driverId: number): Promise<RideOffer> {
     if (!this.isDatabaseBacked()) {
       return rideMarketplace.cancelRide(offerId, driverId);
