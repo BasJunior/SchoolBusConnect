@@ -187,6 +187,47 @@ export const driverAvailability = pgTable("driver_availability", {
   offlineAt: timestamp("offline_at"),
 });
 
+// BVSBus marketplace persistence
+export const rideOffers = pgTable("ride_offers", {
+  id: serial("id").primaryKey(),
+  driverId: integer("driver_id").notNull(),
+  driverName: text("driver_name").notNull(),
+  driverRating: decimal("driver_rating", { precision: 3, scale: 2 }).notNull().default("0.00"),
+  origin: text("origin").notNull(),
+  destination: text("destination").notNull(),
+  departureAt: timestamp("departure_at", { withTimezone: true }).notNull(),
+  seatsTotal: integer("seats_total").notNull(),
+  seatsAvailable: integer("seats_available").notNull(),
+  pricePerSeat: decimal("price_per_seat", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("EUR"),
+  vehicleMake: text("vehicle_make").notNull(),
+  vehicleModel: text("vehicle_model").notNull(),
+  vehicleColor: text("vehicle_color"),
+  vehiclePlate: text("vehicle_plate"),
+  instantBooking: boolean("instant_booking").notNull().default(true),
+  luggage: text("luggage").notNull().default("medium"),
+  petsAllowed: boolean("pets_allowed").notNull().default(false),
+  smokingAllowed: boolean("smoking_allowed").notNull().default(false),
+  status: text("status").notNull().default("published"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const rideReservations = pgTable("ride_reservations", {
+  id: serial("id").primaryKey(),
+  offerId: integer("offer_id").references(() => rideOffers.id, { onDelete: "cascade" }).notNull(),
+  passengerId: integer("passenger_id").notNull(),
+  passengerName: text("passenger_name").notNull(),
+  seats: integer("seats").notNull(),
+  rideSubtotal: decimal("ride_subtotal", { precision: 10, scale: 2 }).notNull(),
+  serviceFee: decimal("service_fee", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("EUR"),
+  status: text("status").notNull().default("confirmed"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -271,6 +312,11 @@ export type DriverRoute = typeof driverRoutes.$inferSelect;
 export type InsertDriverRoute = z.infer<typeof insertDriverRouteSchema>;
 export type DriverAvailability = typeof driverAvailability.$inferSelect;
 export type InsertDriverAvailability = z.infer<typeof insertDriverAvailabilitySchema>;
+
+export type RideOfferRow = typeof rideOffers.$inferSelect;
+export type InsertRideOfferRow = typeof rideOffers.$inferInsert;
+export type RideReservationRow = typeof rideReservations.$inferSelect;
+export type InsertRideReservationRow = typeof rideReservations.$inferInsert;
 
 // Additional types for API responses
 export type RouteWithSchedules = Route & {
