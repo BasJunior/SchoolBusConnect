@@ -151,6 +151,60 @@ class RideStore {
     });
   }
 
+  async cancelReservation(reservationId: number, passengerId: number): Promise<RideReservation> {
+    if (!this.isDatabaseBacked()) {
+      return rideMarketplace.cancelReservation(reservationId, passengerId);
+    }
+
+    const db = await this.database();
+
+    return db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select()
+        .from(rideReservations)
+        .where(eq(rideReservations.id, reservationId))
+        .limit(1);
+
+      if (!existing) throw new Error("Reservation not found");
+      if (existing.passengerId !== passengerId) throw new Error("Reservation does not belong to passenger");
+      if (existing.status === "cancelled") return mapReservation(existing);
+      if (existing.status !== "confirmed") throw new Error("Reservation cannot be cancelled");
+
+      const [cancelled] = await tx
+        .update(rideReservations)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(
+          and(
+            eq(rideReservations.id, reservationId),
+            eq(rideReservations.passengerId, passengerId),
+            eq(rideReservations.status, "confirmed"),
+          ),
+        )
+        .returning();
+
+      if (!cancelled) {
+        const [latest] = await tx
+          .select()
+          .from(rideReservations)
+          .where(eq(rideReservations.id, reservationId))
+          .limit(1);
+        if (latest?.status === "cancelled") return mapReservation(latest);
+        throw new Error("Reservation could not be cancelled");
+      }
+
+      await tx
+        .update(rideOffers)
+        .set({
+          seatsAvailable: sql`LEAST(${rideOffers.seatsTotal}, ${rideOffers.seatsAvailable} + ${cancelled.seats})`,
+          status: sql`CASE WHEN ${rideOffers.status} = 'sold_out' THEN 'published' ELSE ${rideOffers.status} END`,
+          updatedAt: new Date(),
+        })
+        .where(eq(rideOffers.id, cancelled.offerId));
+
+      return mapReservation(cancelled);
+    });
+  }
+
   async reservationsForPassenger(passengerId: number) {
     if (!this.isDatabaseBacked()) return rideMarketplace.reservationsForPassenger(passengerId);
 
