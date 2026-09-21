@@ -2,7 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, updateUserSchema, insertBookingSchema, insertMessageSchema, insertDriverRouteSchema, insertDriverAvailabilitySchema } from "@shared/schema";
-import { z } from "zod";\nimport { rideMarketplace } from "./ride-marketplace";\nimport { createRideOfferSchema, reserveRideSchema } from "@shared/schema";
+import { z } from "zod";
+import { rideMarketplace } from "./ride-marketplace";
+import { createRideOfferSchema, reserveRideSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment verification
