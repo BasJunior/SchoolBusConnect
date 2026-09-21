@@ -238,13 +238,23 @@ export default function RideDetails() {
                             </p>
                           </div>
                         </div>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          booking.status === "cancelled"
-                            ? "bg-neutral-100 text-neutral-500"
-                            : "bg-green-50 text-green-700"
-                        }`}>
-                          {booking.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {booking.status !== "cancelled" && (
+                            <a
+                              href={`/messages/${booking.id}`}
+                              className="rounded-full bg-black px-3 py-1.5 text-[11px] font-semibold text-white"
+                            >
+                              Message
+                            </a>
+                          )}
+                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            booking.status === "cancelled"
+                              ? "bg-neutral-100 text-neutral-500"
+                              : "bg-green-50 text-green-700"
+                          }`}>
+                            {booking.status}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
