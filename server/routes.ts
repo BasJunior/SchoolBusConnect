@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertUserSchema, updateUserSchema, insertBookingSchema, insertMessageSchema, insertDriverRouteSchema, insertDriverAvailabilitySchema } from "@shared/schema";
 import { z } from "zod";
 import { rideStore } from "./ride-store";
+import { rideMessageStore } from "./ride-message-store";
 import { createRideOfferSchema, reserveRideSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -239,6 +240,107 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(bookingWithDetails);
     } catch (error) {
       res.status(400).json({ message: "Failed to update booking", error });
+    }
+  });
+
+  // BVSBus ride-linked conversations
+  app.post("/api/ride-messages", async (req, res) => {
+    try {
+      const input = z.object({
+        reservationId: z.number().int().positive(),
+        senderId: z.number().int().positive(),
+        content: z.string().trim().min(1).max(1000),
+      }).parse(req.body);
+
+      const reservation = await rideStore.getReservation(input.reservationId);
+      if (!reservation) return res.status(404).json({ message: "Reservation not found" });
+
+      const offer = await rideStore.get(reservation.offerId);
+      if (!offer) return res.status(404).json({ message: "Ride offer not found" });
+
+      let senderName: string;
+      let receiverId: number;
+      let receiverName: string;
+
+      if (input.senderId === reservation.passengerId) {
+        senderName = reservation.passengerName;
+        receiverId = offer.driverId;
+        receiverName = offer.driverName;
+      } else if (input.senderId === offer.driverId) {
+        senderName = offer.driverName;
+        receiverId = reservation.passengerId;
+        receiverName = reservation.passengerName;
+      } else {
+        return res.status(403).json({ message: "User is not a participant in this reservation" });
+      }
+
+      const message = await rideMessageStore.send({
+        reservationId: reservation.id,
+        offerId: offer.id,
+        senderId: input.senderId,
+        senderName,
+        receiverId,
+        receiverName,
+        content: input.content,
+      });
+
+      res.status(201).json(message);
+    } catch (error: any) {
+      res.status(400).json({ message: error?.message || "Failed to send ride message" });
+    }
+  });
+
+  app.get("/api/ride-messages/reservation/:reservationId", async (req, res) => {
+    try {
+      const reservationId = Number(req.params.reservationId);
+      const userId = Number(req.query.userId);
+      if (!Number.isFinite(userId)) return res.status(400).json({ message: "userId is required" });
+
+      const reservation = await rideStore.getReservation(reservationId);
+      if (!reservation) return res.status(404).json({ message: "Reservation not found" });
+
+      const offer = await rideStore.get(reservation.offerId);
+      if (!offer) return res.status(404).json({ message: "Ride offer not found" });
+
+      if (userId !== reservation.passengerId && userId !== offer.driverId) {
+        return res.status(403).json({ message: "User is not a participant in this reservation" });
+      }
+
+      const messages = await rideMessageStore.conversation(reservationId);
+      res.json({ reservation, offer, messages });
+    } catch (error: any) {
+      res.status(400).json({ message: error?.message || "Failed to load ride conversation" });
+    }
+  });
+
+  app.post("/api/ride-messages/reservation/:reservationId/read", async (req, res) => {
+    try {
+      const reservationId = Number(req.params.reservationId);
+      const { userId } = z.object({ userId: z.number().int().positive() }).parse(req.body);
+
+      const reservation = await rideStore.getReservation(reservationId);
+      if (!reservation) return res.status(404).json({ message: "Reservation not found" });
+      const offer = await rideStore.get(reservation.offerId);
+      if (!offer) return res.status(404).json({ message: "Ride offer not found" });
+
+      if (userId !== reservation.passengerId && userId !== offer.driverId) {
+        return res.status(403).json({ message: "User is not a participant in this reservation" });
+      }
+
+      await rideMessageStore.markConversationRead(reservationId, userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(400).json({ message: error?.message || "Failed to mark conversation read" });
+    }
+  });
+
+  app.get("/api/ride-inbox/:userId", async (req, res) => {
+    try {
+      const userId = Number(req.params.userId);
+      if (!Number.isFinite(userId)) return res.status(400).json({ message: "Invalid user ID" });
+      res.json(await rideMessageStore.inbox(userId));
+    } catch (error: any) {
+      res.status(500).json({ message: error?.message || "Failed to load ride inbox" });
     }
   });
 
