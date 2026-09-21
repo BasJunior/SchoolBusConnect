@@ -634,6 +634,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/ride-offers/:id/cancel", async (req, res) => {
+    try {
+      const { driverId } = z.object({ driverId: z.number().int().positive() }).parse(req.body);
+      const ride = await rideStore.cancelRide(Number(req.params.id), driverId);
+      res.json(ride);
+    } catch (error: any) {
+      const message = error?.message || "Failed to cancel ride";
+      const status = message.includes("does not belong") ? 403 : message.includes("not found") ? 404 : 400;
+      res.status(status).json({ message });
+    }
+  });
+
   app.post("/api/ride-offers/:id/reserve", async (req, res) => {
     try {
       const input = reserveRideSchema.parse(req.body);
