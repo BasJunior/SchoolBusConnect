@@ -39,6 +39,30 @@ export default function RideDetails() {
     return { subtotal, fee, total: subtotal + fee };
   }, [ride, seats]);
 
+  const refreshOwnerRide = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: [`/api/ride-offers/${rideId}`] }),
+      queryClient.invalidateQueries({ queryKey: [`/api/ride-offers/driver/${user?.id || 0}`] }),
+      queryClient.invalidateQueries({ queryKey: [`/api/ride-reservations/driver/${user?.id || 0}`] }),
+    ]);
+  };
+
+  const startRide = useMutation<RideOffer, Error>({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/ride-offers/${rideId}/start`, { driverId: user!.id });
+      return response.json();
+    },
+    onSuccess: refreshOwnerRide,
+  });
+
+  const completeRide = useMutation<RideOffer, Error>({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/ride-offers/${rideId}/complete`, { driverId: user!.id });
+      return response.json();
+    },
+    onSuccess: refreshOwnerRide,
+  });
+
   const cancelRide = useMutation<RideOffer, Error>({
     mutationFn: async () => {
       const response = await apiRequest("POST", `/api/ride-offers/${rideId}/cancel`, {
@@ -46,13 +70,7 @@ export default function RideDetails() {
       });
       return response.json();
     },
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: [`/api/ride-offers/${rideId}`] }),
-        queryClient.invalidateQueries({ queryKey: [`/api/ride-offers/driver/${user?.id || 0}`] }),
-        queryClient.invalidateQueries({ queryKey: [`/api/ride-reservations/driver/${user?.id || 0}`] }),
-      ]);
-    },
+    onSuccess: refreshOwnerRide,
   });
 
   const reservation = useMutation<RideReservation, Error>({
@@ -156,23 +174,48 @@ export default function RideDetails() {
                       Cancelling closes this ride and cancels active passenger reservations.
                     </p>
                   </div>
-                  {ride.status !== "cancelled" && ride.status !== "completed" ? (
-                    <button
-                      type="button"
-                      onClick={() => cancelRide.mutate()}
-                      disabled={cancelRide.isPending}
-                      className="shrink-0 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700 disabled:opacity-50"
-                    >
-                      {cancelRide.isPending ? "Cancelling…" : "Cancel ride"}
-                    </button>
-                  ) : (
-                    <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold capitalize text-neutral-600">
-                      {ride.status}
-                    </span>
-                  )}
+                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                    {(ride.status === "published" || ride.status === "sold_out") && (
+                      <button
+                        type="button"
+                        onClick={() => startRide.mutate()}
+                        disabled={startRide.isPending}
+                        className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {startRide.isPending ? "Starting…" : "Start trip"}
+                      </button>
+                    )}
+                    {ride.status === "in_progress" && (
+                      <button
+                        type="button"
+                        onClick={() => completeRide.mutate()}
+                        disabled={completeRide.isPending}
+                        className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                      >
+                        {completeRide.isPending ? "Completing…" : "Complete trip"}
+                      </button>
+                    )}
+                    {ride.status !== "cancelled" && ride.status !== "completed" && ride.status !== "in_progress" && (
+                      <button
+                        type="button"
+                        onClick={() => cancelRide.mutate()}
+                        disabled={cancelRide.isPending}
+                        className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700 disabled:opacity-50"
+                      >
+                        {cancelRide.isPending ? "Cancelling…" : "Cancel ride"}
+                      </button>
+                    )}
+                    {(ride.status === "cancelled" || ride.status === "completed" || ride.status === "in_progress") && (
+                      <span className="rounded-full bg-neutral-100 px-3 py-2 text-xs font-semibold capitalize text-neutral-600">
+                        {ride.status.replace("_", " ")}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                {cancelRide.error && (
-                  <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{cancelRide.error.message}</p>
+                {(startRide.error || completeRide.error || cancelRide.error) && (
+                  <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700">
+                    {startRide.error?.message || completeRide.error?.message || cancelRide.error?.message}
+                  </p>
                 )}
               </section>
 
