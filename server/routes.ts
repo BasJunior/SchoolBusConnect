@@ -6,6 +6,24 @@ import { z } from "zod";
 import { rideStore } from "./ride-store";
 import { rideMessageStore } from "./ride-message-store";
 import { createRideOfferSchema, reserveRideSchema } from "@shared/schema";
+import { bvsbusStripe } from "./stripe-client";
+import {
+  createDriverDashboardLink,
+  createDriverOnboardingLink,
+  createReservationCheckout,
+  reconcileCheckoutSession,
+  refreshDriverConnectAccount,
+  refundReservationIfNeeded,
+  releaseRidePayouts,
+} from "./stripe-marketplace";
+
+
+function requestBaseUrl(req: any) {
+  if (process.env.PUBLIC_APP_URL) return process.env.PUBLIC_APP_URL.replace(/\/$/, "");
+  const forwarded = req.headers["x-forwarded-proto"];
+  const protocol = Array.isArray(forwarded) ? forwarded[0] : forwarded || req.protocol;
+  return `${protocol}://${req.get("host")}`;
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment verification
@@ -697,6 +715,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+  // BVSBus Stripe sandbox integration
+  app.get("/api/stripe/status", (_req, res) => {
+    res.json({
+      configured: bvsbusStripe.isConfigured(),
+      mode: "test",
+      livePaymentsAllowed: false,
+    });
+  });
+
+  app.get("/api/stripe/connect/status/:driverId", async (req, res) => {
+    try {
+      const driverId = Number(req.params.driverId);
+      const driver = await storage.getUser(driverId);
+      if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+      const status = await refreshDriverConnectAccount(driverId);
+      res.json(status);
+    } catch (error: any) {
+      if (error?.message?.includes("no Stripe connected account")) {
+        return res.json({
+          driverId: Number(req.params.driverId),
+          stripeAccountId: null,
+          detailsSubmitted: false,
+          payoutsEnabled: false,
+          chargesEnabled: false,
+          readyForPayouts: false,
+        });
+      }
+      res.status(400).json({ message: error?.message || "Failed to load Stripe payout status" });
+    }
+  });
+
+  app.post("/api/stripe/connect/onboard", async (req, res) => {
+    try {
+      bvsbusStripe.assertSandboxConfigured();
+      const { driverId } = z.object({ driverId: z.number().int().positive() }).parse(req.body);
+      const driver = await storage.getUser(driverId);
+      if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+      const result = await createDriverOnboardingLink(driver, requestBaseUrl(req));
+      res.json(result);
+    } catch (error: any) {
+      res.status(400).json({ message: error?.message || "Failed to start Stripe onboarding" });
+    }
+  });
+
+  app.post("/api/stripe/connect/dashboard", async (req, res) => {
+    try {
+      bvsbusStripe.assertSandboxConfigured();
+      const { driverId } = z.object({ driverId: z.number().int().positive() }).parse(req.body);
+      const driver = await storage.getUser(driverId);
+      if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+      res.json(await createDriverDashboardLink(driverId));
+    } catch (error: any) {
+      res.status(400).json({ message: error?.message || "Failed to open Stripe Express Dashboard" });
+    }
+  });
+
+  app.post("/api/stripe/checkout/reconcile", async (req, res) => {
+    try {
+      bvsbusStripe.assertSandboxConfigured();
+      const { sessionId, userId } = z.object({
+        sessionId: z.string().min(5),
+        userId: z.number().int().positive(),
+      }).parse(req.body);
+
+      const reservation = await rideStore.getReservationByCheckoutSession(sessionId);
+      if (!reservation) return res.status(404).json({ message: "Checkout reservation not found" });
+      if (reservation.passengerId !== userId) {
+        return res.status(403).json({ message: "Checkout session does not belong to this passenger" });
+      }
+
+      res.json(await reconcileCheckoutSession(sessionId));
+    } catch (error: any) {
+      res.status(400).json({ message: error?.message || "Failed to reconcile Stripe Checkout" });
+    }
+  });
+
   // BVSBus peer-to-peer ride marketplace
   app.get("/api/ride-offers", async (req, res) => {
     const seats = req.query.seats ? Number(req.query.seats) : undefined;
@@ -752,6 +849,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { driverId } = z.object({ driverId: z.number().int().positive() }).parse(req.body);
       const ride = await rideStore.completeRide(Number(req.params.id), driverId);
+      if (bvsbusStripe.isConfigured()) {
+        await releaseRidePayouts(ride.id, driverId);
+      }
       res.json(ride);
     } catch (error: any) {
       const message = error?.message || "Failed to complete ride";
@@ -763,12 +863,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ride-offers/:id/cancel", async (req, res) => {
     try {
       const { driverId } = z.object({ driverId: z.number().int().positive() }).parse(req.body);
-      const ride = await rideStore.cancelRide(Number(req.params.id), driverId);
+      const offerId = Number(req.params.id);
+      const before = await rideStore.reservationsForDriver(driverId);
+      const paid = before
+        .filter((entry) => entry.offer.id === offerId)
+        .map((entry) => entry.reservation)
+        .filter((reservation) => reservation.paymentStatus === "paid");
+
+      const ride = await rideStore.cancelRide(offerId, driverId);
+      if (bvsbusStripe.isConfigured()) {
+        for (const reservation of paid) {
+          const cancelled = await rideStore.getReservation(reservation.id);
+          if (!cancelled) continue;
+          try {
+            await refundReservationIfNeeded(cancelled);
+          } catch {
+            // The reservation remains refundStatus=failed for operational follow-up.
+          }
+        }
+      }
       res.json(ride);
     } catch (error: any) {
       const message = error?.message || "Failed to cancel ride";
       const status = message.includes("does not belong") ? 403 : message.includes("not found") ? 404 : 400;
       res.status(status).json({ message });
+    }
+  });
+
+  app.post("/api/ride-offers/:id/checkout", async (req, res) => {
+    let reservation: any = null;
+    try {
+      bvsbusStripe.assertSandboxConfigured();
+      const input = reserveRideSchema.parse(req.body);
+      const offer = await rideStore.get(Number(req.params.id));
+      if (!offer) return res.status(404).json({ message: "Ride offer not found" });
+      if (offer.driverId === input.passengerId) {
+        return res.status(400).json({ message: "Drivers cannot reserve seats on their own ride" });
+      }
+
+      const passenger = await storage.getUser(input.passengerId);
+      if (!passenger) return res.status(404).json({ message: "Passenger not found" });
+
+      reservation = await rideStore.reserve(
+        offer.id,
+        input.passengerId,
+        passenger.fullName,
+        input.seats,
+      );
+
+      const checkout = await createReservationCheckout({
+        reservation,
+        offer,
+        passengerEmail: passenger.email,
+        baseUrl: requestBaseUrl(req),
+      });
+
+      res.status(201).json(checkout);
+    } catch (error: any) {
+      if (reservation) {
+        try {
+          await rideStore.cancelReservation(reservation.id, reservation.passengerId);
+        } catch {
+          // Preserve the original Stripe/setup error while best-effort releasing held seats.
+        }
+      }
+      const message = error?.message || "Failed to create Stripe Checkout";
+      res.status(message.includes("seats") ? 409 : 400).json({ message });
     }
   });
 
@@ -801,6 +961,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { passengerId } = z.object({ passengerId: z.number().int().positive() }).parse(req.body);
       const reservation = await rideStore.cancelReservation(Number(req.params.id), passengerId);
+      if (bvsbusStripe.isConfigured() && reservation.paymentStatus === "paid") {
+        try {
+          return res.json(await refundReservationIfNeeded(reservation));
+        } catch {
+          const latest = await rideStore.getReservation(reservation.id);
+          return res.json(latest || reservation);
+        }
+      }
       res.json(reservation);
     } catch (error: any) {
       const message = error?.message || "Failed to cancel reservation";
