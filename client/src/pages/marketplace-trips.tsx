@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowRight, Car, TicketCheck } from "lucide-react";
 import type { RideOffer, RideReservation } from "@shared/schema";
@@ -16,6 +17,7 @@ function tripLabel(reservation: RideReservation, offer: RideOffer) {
 
 function paymentLabel(reservation: RideReservation) {
   if (reservation.refundStatus === "pending") return "Refund pending";
+  if (reservation.refundStatus === "failed") return "Refund needs attention";
   if (reservation.paymentStatus === "refunded") return "Refunded";
   if (reservation.paymentStatus === "paid") return "Paid";
   if (reservation.paymentStatus === "pending") return "Payment pending";
@@ -36,6 +38,44 @@ export default function MarketplaceTrips() {
     queryKey: [offersKey],
     enabled: !!user,
   });
+
+  useEffect(() => {
+    if (!user) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const payment = params.get("payment");
+    const sessionId = params.get("session_id");
+    const cancelledReservationId = Number(params.get("reservation"));
+
+    if (!payment) return;
+
+    async function reconcileReturn() {
+      try {
+        if (payment === "success" && sessionId) {
+          await apiRequest("POST", "/api/stripe/checkout/reconcile", {
+            sessionId,
+            userId: user!.id,
+          });
+        } else if (payment === "cancelled" && Number.isFinite(cancelledReservationId)) {
+          await apiRequest("POST", `/api/ride-reservations/${cancelledReservationId}/cancel`, {
+            passengerId: user!.id,
+          });
+        }
+      } finally {
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: [bookingsKey] }),
+          queryClient.invalidateQueries({
+            predicate: (query) =>
+              typeof query.queryKey[0] === "string" &&
+              String(query.queryKey[0]).startsWith("/api/ride-offers"),
+          }),
+        ]);
+        window.history.replaceState({}, "", "/trips");
+      }
+    }
+
+    void reconcileReturn();
+  }, [user?.id]);
 
   const cancelReservation = useMutation<RideReservation, Error, number>({
     mutationFn: async (reservationId) => {
