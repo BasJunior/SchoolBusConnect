@@ -106,16 +106,26 @@ export default function MarketplaceTrips() {
                       </p>
                     </div>
 
-                    {reservation.status === "confirmed" && (
-                      <button
-                        type="button"
-                        onClick={() => cancelReservation.mutate(reservation.id)}
-                        disabled={cancelReservation.isPending}
-                        className="rounded-full border border-neutral-300 px-4 py-2 text-xs font-semibold disabled:opacity-50"
-                      >
-                        Cancel
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {reservation.status !== "cancelled" && (
+                        <a
+                          href={`/messages/${reservation.id}`}
+                          className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white"
+                        >
+                          Message
+                        </a>
+                      )}
+                      {reservation.status === "confirmed" && (
+                        <button
+                          type="button"
+                          onClick={() => cancelReservation.mutate(reservation.id)}
+                          disabled={cancelReservation.isPending}
+                          className="rounded-full border border-neutral-300 px-4 py-2 text-xs font-semibold disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </article>
               ))}
