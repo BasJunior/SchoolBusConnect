@@ -286,6 +286,14 @@ class RideMarketplace {
     return reservation;
   }
 
+  markRefundFailed(reservationId: number): RideReservation {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) throw new Error("Reservation not found");
+    reservation.refundStatus = "failed";
+    this.reservations.set(reservation.id, reservation);
+    return reservation;
+  }
+
   reservationsForPassenger(passengerId: number) {
     return Array.from(this.reservations.values())
       .filter((reservation) => reservation.passengerId === passengerId)
