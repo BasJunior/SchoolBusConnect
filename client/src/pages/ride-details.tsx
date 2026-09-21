@@ -39,6 +39,22 @@ export default function RideDetails() {
     return { subtotal, fee, total: subtotal + fee };
   }, [ride, seats]);
 
+  const cancelRide = useMutation<RideOffer, Error>({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/ride-offers/${rideId}/cancel`, {
+        driverId: user!.id,
+      });
+      return response.json();
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: [`/api/ride-offers/${rideId}`] }),
+        queryClient.invalidateQueries({ queryKey: [`/api/ride-offers/driver/${user?.id || 0}`] }),
+        queryClient.invalidateQueries({ queryKey: [`/api/ride-reservations/driver/${user?.id || 0}`] }),
+      ]);
+    },
+  });
+
   const reservation = useMutation<RideReservation, Error>({
     mutationFn: async () => {
       const response = await apiRequest("POST", `/api/ride-offers/${rideId}/reserve`, {
@@ -130,6 +146,34 @@ export default function RideDetails() {
                     <p className="text-xs text-neutral-500">ride contributions</p>
                   </div>
                 </div>
+              </section>
+
+              <section className="rounded-3xl bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-bold">Ride controls</h2>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Cancelling closes this ride and cancels active passenger reservations.
+                    </p>
+                  </div>
+                  {ride.status !== "cancelled" && ride.status !== "completed" ? (
+                    <button
+                      type="button"
+                      onClick={() => cancelRide.mutate()}
+                      disabled={cancelRide.isPending}
+                      className="shrink-0 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-700 disabled:opacity-50"
+                    >
+                      {cancelRide.isPending ? "Cancelling…" : "Cancel ride"}
+                    </button>
+                  ) : (
+                    <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-semibold capitalize text-neutral-600">
+                      {ride.status}
+                    </span>
+                  )}
+                </div>
+                {cancelRide.error && (
+                  <p className="mt-3 rounded-2xl bg-red-50 p-3 text-sm text-red-700">{cancelRide.error.message}</p>
+                )}
               </section>
 
               <section className="rounded-3xl bg-white p-5 shadow-sm">
