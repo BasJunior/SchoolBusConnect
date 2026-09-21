@@ -73,17 +73,17 @@ export default function RideDetails() {
     onSuccess: refreshOwnerRide,
   });
 
-  const reservation = useMutation<RideReservation, Error>({
+  const reservation = useMutation<{ reservation: RideReservation; checkoutUrl: string; checkoutSessionId: string }, Error>({
     mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/ride-offers/${rideId}/reserve`, {
+      const response = await apiRequest("POST", `/api/ride-offers/${rideId}/checkout`, {
         passengerId: user!.id,
         seats,
       });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [`/api/ride-offers/${rideId}`] });
-      window.location.href = "/trips";
+      window.location.href = data.checkoutUrl;
     },
   });
 
@@ -299,7 +299,7 @@ export default function RideDetails() {
                   disabled={reservation.isPending}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black px-4 py-4 font-bold text-white disabled:opacity-50"
                 >
-                  <Check className="h-5 w-5" /> {reservation.isPending ? "Reserving…" : "Reserve seat"}
+                  <Check className="h-5 w-5" /> {reservation.isPending ? "Opening secure checkout…" : "Continue to secure payment"}
                 </button>
               ) : (
                 <button disabled className="w-full rounded-2xl bg-neutral-300 px-4 py-4 font-bold text-neutral-600">
