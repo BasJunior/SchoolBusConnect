@@ -107,6 +107,10 @@ class RideMarketplace {
       total: this.money(rideSubtotal + serviceFee),
       currency: offer.currency,
       status: "confirmed",
+      paymentStatus: "unpaid",
+      paymentProvider: null,
+      paymentIntentId: null,
+      refundStatus: "not_required",
       createdAt: new Date().toISOString(),
     };
 
@@ -131,6 +135,7 @@ class RideMarketplace {
     for (const reservation of this.reservations.values()) {
       if (reservation.offerId === offerId && reservation.status === "confirmed") {
         reservation.status = "cancelled";
+        if (reservation.paymentStatus === "paid") reservation.refundStatus = "pending";
         this.reservations.set(reservation.id, reservation);
       }
     }
@@ -146,6 +151,7 @@ class RideMarketplace {
     if (reservation.status !== "confirmed") throw new Error("Reservation cannot be cancelled");
 
     reservation.status = "cancelled";
+    if (reservation.paymentStatus === "paid") reservation.refundStatus = "pending";
     this.reservations.set(reservation.id, reservation);
 
     const offer = this.offers.get(reservation.offerId);
@@ -155,6 +161,45 @@ class RideMarketplace {
       this.offers.set(offer.id, offer);
     }
 
+    return reservation;
+  }
+
+  getReservation(reservationId: number) {
+    return this.reservations.get(reservationId);
+  }
+
+  attachPaymentIntent(reservationId: number, paymentIntentId: string): RideReservation {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) throw new Error("Reservation not found");
+    reservation.paymentProvider = "stripe";
+    reservation.paymentIntentId = paymentIntentId;
+    reservation.paymentStatus = "pending";
+    this.reservations.set(reservation.id, reservation);
+    return reservation;
+  }
+
+  markPaymentPaid(reservationId: number): RideReservation {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) throw new Error("Reservation not found");
+    reservation.paymentStatus = "paid";
+    this.reservations.set(reservation.id, reservation);
+    return reservation;
+  }
+
+  markPaymentFailed(reservationId: number): RideReservation {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) throw new Error("Reservation not found");
+    reservation.paymentStatus = "failed";
+    this.reservations.set(reservation.id, reservation);
+    return reservation;
+  }
+
+  markRefunded(reservationId: number): RideReservation {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) throw new Error("Reservation not found");
+    reservation.paymentStatus = "refunded";
+    reservation.refundStatus = "succeeded";
+    this.reservations.set(reservation.id, reservation);
     return reservation;
   }
 
