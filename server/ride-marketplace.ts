@@ -110,6 +110,10 @@ class RideMarketplace {
       paymentStatus: "unpaid",
       paymentProvider: null,
       paymentIntentId: null,
+      checkoutSessionId: null,
+      chargeId: null,
+      transferId: null,
+      transferStatus: "not_ready",
       refundStatus: "not_required",
       createdAt: new Date().toISOString(),
     };
@@ -195,6 +199,56 @@ class RideMarketplace {
 
   getReservation(reservationId: number) {
     return this.reservations.get(reservationId);
+  }
+
+  getReservationByCheckoutSession(checkoutSessionId: string) {
+    return Array.from(this.reservations.values()).find(
+      (reservation) => reservation.checkoutSessionId === checkoutSessionId,
+    );
+  }
+
+  attachCheckoutSession(
+    reservationId: number,
+    checkoutSessionId: string,
+    paymentIntentId?: string | null,
+  ): RideReservation {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) throw new Error("Reservation not found");
+    reservation.paymentProvider = "stripe";
+    reservation.checkoutSessionId = checkoutSessionId;
+    reservation.paymentIntentId = paymentIntentId || reservation.paymentIntentId;
+    reservation.paymentStatus = "pending";
+    this.reservations.set(reservation.id, reservation);
+    return reservation;
+  }
+
+  markCheckoutPaid(
+    reservationId: number,
+    paymentIntentId?: string | null,
+    chargeId?: string | null,
+  ): RideReservation {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) throw new Error("Reservation not found");
+    reservation.paymentProvider = "stripe";
+    reservation.paymentStatus = "paid";
+    reservation.paymentIntentId = paymentIntentId || reservation.paymentIntentId;
+    reservation.chargeId = chargeId || reservation.chargeId;
+    reservation.transferStatus = "not_ready";
+    this.reservations.set(reservation.id, reservation);
+    return reservation;
+  }
+
+  markTransferStatus(
+    reservationId: number,
+    transferStatus: RideReservation["transferStatus"],
+    transferId?: string | null,
+  ): RideReservation {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) throw new Error("Reservation not found");
+    reservation.transferStatus = transferStatus;
+    reservation.transferId = transferId || reservation.transferId;
+    this.reservations.set(reservation.id, reservation);
+    return reservation;
   }
 
   attachPaymentIntent(reservationId: number, paymentIntentId: string): RideReservation {
