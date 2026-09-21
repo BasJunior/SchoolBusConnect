@@ -145,6 +145,7 @@ class RideStore {
           currency: updatedOffer.currency,
           status: "confirmed",
           paymentStatus: "unpaid",
+          transferStatus: "not_ready",
           refundStatus: "not_required",
         })
         .returning();
@@ -339,6 +340,98 @@ class RideStore {
     return row ? mapReservation(row) : undefined;
   }
 
+  async getReservationByCheckoutSession(checkoutSessionId: string): Promise<RideReservation | undefined> {
+    if (!this.isDatabaseBacked()) {
+      return rideMarketplace.getReservationByCheckoutSession(checkoutSessionId);
+    }
+
+    const db = await this.database();
+    const [row] = await db
+      .select()
+      .from(rideReservations)
+      .where(eq(rideReservations.checkoutSessionId, checkoutSessionId))
+      .limit(1);
+
+    return row ? mapReservation(row) : undefined;
+  }
+
+  async attachCheckoutSession(
+    reservationId: number,
+    checkoutSessionId: string,
+    paymentIntentId?: string | null,
+  ): Promise<RideReservation> {
+    if (!this.isDatabaseBacked()) {
+      return rideMarketplace.attachCheckoutSession(reservationId, checkoutSessionId, paymentIntentId);
+    }
+
+    const db = await this.database();
+    const [row] = await db
+      .update(rideReservations)
+      .set({
+        paymentProvider: "stripe",
+        checkoutSessionId,
+        paymentIntentId: paymentIntentId || undefined,
+        paymentStatus: "pending",
+        updatedAt: new Date(),
+      })
+      .where(eq(rideReservations.id, reservationId))
+      .returning();
+
+    if (!row) throw new Error("Reservation not found");
+    return mapReservation(row);
+  }
+
+  async markCheckoutPaid(
+    reservationId: number,
+    paymentIntentId?: string | null,
+    chargeId?: string | null,
+  ): Promise<RideReservation> {
+    if (!this.isDatabaseBacked()) {
+      return rideMarketplace.markCheckoutPaid(reservationId, paymentIntentId, chargeId);
+    }
+
+    const db = await this.database();
+    const [row] = await db
+      .update(rideReservations)
+      .set({
+        paymentProvider: "stripe",
+        paymentStatus: "paid",
+        paymentIntentId: paymentIntentId || undefined,
+        chargeId: chargeId || undefined,
+        transferStatus: "not_ready",
+        updatedAt: new Date(),
+      })
+      .where(eq(rideReservations.id, reservationId))
+      .returning();
+
+    if (!row) throw new Error("Reservation not found");
+    return mapReservation(row);
+  }
+
+  async markTransferStatus(
+    reservationId: number,
+    transferStatus: RideReservation["transferStatus"],
+    transferId?: string | null,
+  ): Promise<RideReservation> {
+    if (!this.isDatabaseBacked()) {
+      return rideMarketplace.markTransferStatus(reservationId, transferStatus, transferId);
+    }
+
+    const db = await this.database();
+    const [row] = await db
+      .update(rideReservations)
+      .set({
+        transferStatus,
+        transferId: transferId || undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(rideReservations.id, reservationId))
+      .returning();
+
+    if (!row) throw new Error("Reservation not found");
+    return mapReservation(row);
+  }
+
   async attachPaymentIntent(reservationId: number, paymentIntentId: string): Promise<RideReservation> {
     if (!this.isDatabaseBacked()) {
       return rideMarketplace.attachPaymentIntent(reservationId, paymentIntentId);
@@ -504,6 +597,10 @@ function mapReservation(row: RideReservationRow): RideReservation {
     paymentStatus: row.paymentStatus as RideReservation["paymentStatus"],
     paymentProvider: row.paymentProvider === "stripe" ? "stripe" : null,
     paymentIntentId: row.paymentIntentId,
+    checkoutSessionId: row.checkoutSessionId,
+    chargeId: row.chargeId,
+    transferId: row.transferId,
+    transferStatus: row.transferStatus as RideReservation["transferStatus"],
     refundStatus: row.refundStatus as RideReservation["refundStatus"],
     createdAt: row.createdAt.toISOString(),
   };
