@@ -231,6 +231,24 @@ export async function handleStripeWebhookEvent(event: {
         chargesEnabled: Boolean(account.charges_enabled),
         country: account.country || stored.country,
       });
+
+      if (account.details_submitted && account.payouts_enabled) {
+        const entries = await rideStore.reservationsForDriver(stored.driverId);
+        for (const entry of entries) {
+          const reservation = entry.reservation;
+          if (
+            reservation.status === "completed" &&
+            reservation.paymentStatus === "paid" &&
+            reservation.transferStatus !== "transferred"
+          ) {
+            try {
+              await releaseReservationPayout(reservation, stored.driverId);
+            } catch {
+              // Transfer status is persisted as failed for later operational retry.
+            }
+          }
+        }
+      }
       return;
     }
 
