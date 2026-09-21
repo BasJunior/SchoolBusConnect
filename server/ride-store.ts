@@ -151,6 +151,54 @@ class RideStore {
     });
   }
 
+  async cancelRide(offerId: number, driverId: number): Promise<RideOffer> {
+    if (!this.isDatabaseBacked()) {
+      return rideMarketplace.cancelRide(offerId, driverId);
+    }
+
+    const db = await this.database();
+
+    return db.transaction(async (tx) => {
+      const [offer] = await tx
+        .select()
+        .from(rideOffers)
+        .where(eq(rideOffers.id, offerId))
+        .limit(1);
+
+      if (!offer) throw new Error("Ride offer not found");
+      if (offer.driverId !== driverId) throw new Error("Ride does not belong to driver");
+      if (offer.status === "cancelled") return mapOffer(offer);
+      if (offer.status === "completed") throw new Error("Completed rides cannot be cancelled");
+
+      const [cancelledOffer] = await tx
+        .update(rideOffers)
+        .set({
+          status: "cancelled",
+          seatsAvailable: offer.seatsTotal,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(rideOffers.id, offerId),
+            eq(rideOffers.driverId, driverId),
+          ),
+        )
+        .returning();
+
+      await tx
+        .update(rideReservations)
+        .set({ status: "cancelled", updatedAt: new Date() })
+        .where(
+          and(
+            eq(rideReservations.offerId, offerId),
+            eq(rideReservations.status, "confirmed"),
+          ),
+        );
+
+      return mapOffer(cancelledOffer);
+    });
+  }
+
   async cancelReservation(reservationId: number, passengerId: number): Promise<RideReservation> {
     if (!this.isDatabaseBacked()) {
       return rideMarketplace.cancelReservation(reservationId, passengerId);
