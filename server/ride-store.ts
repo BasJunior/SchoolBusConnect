@@ -499,6 +499,20 @@ class RideStore {
     return mapReservation(row);
   }
 
+  async markRefundFailed(reservationId: number): Promise<RideReservation> {
+    if (!this.isDatabaseBacked()) return rideMarketplace.markRefundFailed(reservationId);
+
+    const db = await this.database();
+    const [row] = await db
+      .update(rideReservations)
+      .set({ refundStatus: "failed", updatedAt: new Date() })
+      .where(eq(rideReservations.id, reservationId))
+      .returning();
+
+    if (!row) throw new Error("Reservation not found");
+    return mapReservation(row);
+  }
+
   async reservationsForPassenger(passengerId: number) {
     if (!this.isDatabaseBacked()) return rideMarketplace.reservationsForPassenger(passengerId);
 
