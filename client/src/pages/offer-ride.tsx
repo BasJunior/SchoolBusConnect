@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Car, ChevronRight, CreditCard, ExternalLink } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -81,10 +81,13 @@ export default function OfferRide() {
     onSuccess: () => { window.location.href = "/trips"; },
   });
 
-  const stripeReturn = new URLSearchParams(window.location.search).get("stripe");
-  if ((stripeReturn === "return" || stripeReturn === "refresh") && payoutStatusKey) {
+  useEffect(() => {
+    const stripeReturn = new URLSearchParams(window.location.search).get("stripe");
+    if (stripeReturn !== "return" && stripeReturn !== "refresh") return;
+
     queryClient.invalidateQueries({ queryKey: [payoutStatusKey] });
-  }
+    window.history.replaceState({}, "", "/offer");
+  }, [payoutStatusKey]);
 
   function submit(event: FormEvent) {
     event.preventDefault();
