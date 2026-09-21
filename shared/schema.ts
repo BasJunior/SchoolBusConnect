@@ -410,5 +410,9 @@ export type RideReservation = {
   total: number;
   currency: string;
   status: "confirmed" | "cancelled" | "completed";
+  paymentStatus: "unpaid" | "pending" | "paid" | "failed" | "refunded";
+  paymentProvider: "stripe" | null;
+  paymentIntentId: string | null;
+  refundStatus: "not_required" | "pending" | "succeeded" | "failed";
   createdAt: string;
 };
