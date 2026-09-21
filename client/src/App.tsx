@@ -8,7 +8,7 @@ import AccessibilityToolbar from "@/components/accessibility-toolbar";
 import ErrorBoundary from "@/components/error-boundary";
 import { useKeyboardNavigation, useFocusManagement } from "@/hooks/use-keyboard-navigation";
 import Login from "@/pages/login";
-import Home from "@/pages/home";
+import BVSBusHome from "@/pages/bvsbus-home";
 import Routes from "@/pages/routes";
 import History from "@/pages/history";
 import Profile from "@/pages/profile";
@@ -16,6 +16,11 @@ import DriverDashboard from "@/pages/driver-dashboard";
 import TrackingPage from "@/pages/tracking";
 import BookingsPage from "@/pages/bookings";
 import NotFound from "@/pages/not-found";
+import RideDetails from "@/pages/ride-details";
+import OfferRide from "@/pages/offer-ride";
+import MarketplaceTrips from "@/pages/marketplace-trips";
+import MarketplaceInbox from "@/pages/marketplace-inbox";
+import RideChat from "@/pages/ride-chat";
 import type { User } from "@shared/schema";
 
 // Simple authentication state without context for now
@@ -83,12 +88,27 @@ function AppRouter() {
   }
 
   // Allow homepage access without login for demonstration
-  if (!user && path !== "/" && path !== "/login") {
+  const isPublicRide = path.startsWith("/rides/");
+  if (!user && path !== "/" && path !== "/login" && !isPublicRide) {
     return <Login />;
+  }
+
+  if (path.startsWith("/rides/")) {
+    return <RideDetails />;
+  }
+
+  if (path.startsWith("/messages/")) {
+    return <RideChat />;
   }
 
   // Simple routing based on pathname
   switch (path) {
+    case '/offer':
+      return <OfferRide />;
+    case '/trips':
+      return <MarketplaceTrips />;
+    case '/inbox':
+      return <MarketplaceInbox />;
     case '/routes':
       return <Routes />;
     case '/bookings':
@@ -104,7 +124,7 @@ function AppRouter() {
     case '/login':
       return <Login />;
     case '/':
-      return <Home />;
+      return <BVSBusHome />;
     default:
       return <NotFound />;
   }

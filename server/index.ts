@@ -2,8 +2,13 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import path from "path";
 import { fileURLToPath } from "url";
+import { stripeWebhookHandler } from "./stripe-webhook";
 
 const app = express();
+
+// Stripe signature verification must receive the exact raw request bytes.
+app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), stripeWebhookHandler);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 

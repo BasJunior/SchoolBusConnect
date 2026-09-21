@@ -187,6 +187,81 @@ export const driverAvailability = pgTable("driver_availability", {
   offlineAt: timestamp("offline_at"),
 });
 
+// BVSBus marketplace persistence
+export const rideOffers = pgTable("ride_offers", {
+  id: serial("id").primaryKey(),
+  driverId: integer("driver_id").notNull(),
+  driverName: text("driver_name").notNull(),
+  driverRating: decimal("driver_rating", { precision: 3, scale: 2 }).notNull().default("0.00"),
+  origin: text("origin").notNull(),
+  destination: text("destination").notNull(),
+  departureAt: timestamp("departure_at", { withTimezone: true }).notNull(),
+  seatsTotal: integer("seats_total").notNull(),
+  seatsAvailable: integer("seats_available").notNull(),
+  pricePerSeat: decimal("price_per_seat", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("EUR"),
+  vehicleMake: text("vehicle_make").notNull(),
+  vehicleModel: text("vehicle_model").notNull(),
+  vehicleColor: text("vehicle_color"),
+  vehiclePlate: text("vehicle_plate"),
+  instantBooking: boolean("instant_booking").notNull().default(true),
+  luggage: text("luggage").notNull().default("medium"),
+  petsAllowed: boolean("pets_allowed").notNull().default(false),
+  smokingAllowed: boolean("smoking_allowed").notNull().default(false),
+  status: text("status").notNull().default("published"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const rideReservations = pgTable("ride_reservations", {
+  id: serial("id").primaryKey(),
+  offerId: integer("offer_id").references(() => rideOffers.id, { onDelete: "cascade" }).notNull(),
+  passengerId: integer("passenger_id").notNull(),
+  passengerName: text("passenger_name").notNull(),
+  seats: integer("seats").notNull(),
+  rideSubtotal: decimal("ride_subtotal", { precision: 10, scale: 2 }).notNull(),
+  serviceFee: decimal("service_fee", { precision: 10, scale: 2 }).notNull(),
+  total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").notNull().default("EUR"),
+  status: text("status").notNull().default("confirmed"),
+  paymentStatus: text("payment_status").notNull().default("unpaid"),
+  paymentProvider: text("payment_provider"),
+  paymentIntentId: text("payment_intent_id"),
+  checkoutSessionId: text("checkout_session_id"),
+  chargeId: text("charge_id"),
+  transferId: text("transfer_id"),
+  transferStatus: text("transfer_status").notNull().default("not_ready"),
+  refundStatus: text("refund_status").notNull().default("not_required"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const rideDriverAccounts = pgTable("ride_driver_accounts", {
+  id: serial("id").primaryKey(),
+  driverId: integer("driver_id").notNull(),
+  driverName: text("driver_name").notNull(),
+  stripeAccountId: text("stripe_account_id").notNull(),
+  country: text("country").notNull().default("DE"),
+  detailsSubmitted: boolean("details_submitted").notNull().default(false),
+  payoutsEnabled: boolean("payouts_enabled").notNull().default(false),
+  chargesEnabled: boolean("charges_enabled").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const rideMessages = pgTable("ride_messages", {
+  id: serial("id").primaryKey(),
+  reservationId: integer("reservation_id").references(() => rideReservations.id, { onDelete: "cascade" }).notNull(),
+  offerId: integer("offer_id").references(() => rideOffers.id, { onDelete: "cascade" }).notNull(),
+  senderId: integer("sender_id").notNull(),
+  senderName: text("sender_name").notNull(),
+  receiverId: integer("receiver_id").notNull(),
+  receiverName: text("receiver_name").notNull(),
+  content: text("content").notNull(),
+  isRead: boolean("is_read").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -272,6 +347,15 @@ export type InsertDriverRoute = z.infer<typeof insertDriverRouteSchema>;
 export type DriverAvailability = typeof driverAvailability.$inferSelect;
 export type InsertDriverAvailability = z.infer<typeof insertDriverAvailabilitySchema>;
 
+export type RideOfferRow = typeof rideOffers.$inferSelect;
+export type InsertRideOfferRow = typeof rideOffers.$inferInsert;
+export type RideReservationRow = typeof rideReservations.$inferSelect;
+export type InsertRideReservationRow = typeof rideReservations.$inferInsert;
+export type RideDriverAccountRow = typeof rideDriverAccounts.$inferSelect;
+export type InsertRideDriverAccountRow = typeof rideDriverAccounts.$inferInsert;
+export type RideMessageRow = typeof rideMessages.$inferSelect;
+export type InsertRideMessageRow = typeof rideMessages.$inferInsert;
+
 // Additional types for API responses
 export type RouteWithSchedules = Route & {
   schedules: (Schedule & {
@@ -303,4 +387,108 @@ export type AvailableDriver = {
   routes: DriverRoute[];
   distance: number; // Distance from booking location in km
   estimatedArrival: number; // Minutes
+};
+
+
+// BVSBus peer-to-peer ride marketplace contracts shared by the API and client.
+export const createRideOfferSchema = z.object({
+  driverId: z.number().int().positive(),
+  origin: z.string().min(2),
+  destination: z.string().min(2),
+  departureAt: z.string().min(10),
+  seatsTotal: z.number().int().min(1).max(8),
+  pricePerSeat: z.number().positive(),
+  currency: z.string().length(3).default("EUR"),
+  vehicle: z.object({
+    make: z.string().min(1),
+    model: z.string().min(1),
+    color: z.string().optional(),
+    plate: z.string().optional(),
+  }),
+  preferences: z.object({
+    instantBooking: z.boolean().default(true),
+    luggage: z.enum(["small", "medium", "large"]).default("medium"),
+    petsAllowed: z.boolean().default(false),
+    smokingAllowed: z.boolean().default(false),
+  }).default({
+    instantBooking: true,
+    luggage: "medium",
+    petsAllowed: false,
+    smokingAllowed: false,
+  }),
+});
+
+export const reserveRideSchema = z.object({
+  passengerId: z.number().int().positive(),
+  seats: z.number().int().min(1).max(8).default(1),
+});
+
+export type CreateRideOffer = z.infer<typeof createRideOfferSchema>;
+export type ReserveRide = z.infer<typeof reserveRideSchema>;
+
+export type RideOffer = CreateRideOffer & {
+  id: number;
+  driverName: string;
+  driverRating: number;
+  seatsAvailable: number;
+  status: "published" | "sold_out" | "in_progress" | "cancelled" | "completed";
+  createdAt: string;
+};
+
+export type RideReservation = {
+  id: number;
+  offerId: number;
+  passengerId: number;
+  passengerName: string;
+  seats: number;
+  rideSubtotal: number;
+  serviceFee: number;
+  total: number;
+  currency: string;
+  status: "confirmed" | "cancelled" | "completed";
+  paymentStatus: "unpaid" | "pending" | "paid" | "failed" | "refunded";
+  paymentProvider: "stripe" | null;
+  paymentIntentId: string | null;
+  checkoutSessionId: string | null;
+  chargeId: string | null;
+  transferId: string | null;
+  transferStatus: "not_ready" | "awaiting_onboarding" | "pending" | "transferred" | "failed";
+  refundStatus: "not_required" | "pending" | "succeeded" | "failed";
+  createdAt: string;
+};
+
+
+export type RideMessage = {
+  id: number;
+  reservationId: number;
+  offerId: number;
+  senderId: number;
+  senderName: string;
+  receiverId: number;
+  receiverName: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+};
+
+export type RideConversationSummary = {
+  reservationId: number;
+  offerId: number;
+  origin: string;
+  destination: string;
+  counterpartId: number;
+  counterpartName: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  unreadCount: number;
+};
+
+
+export type StripeConnectStatus = {
+  driverId: number;
+  stripeAccountId: string | null;
+  detailsSubmitted: boolean;
+  payoutsEnabled: boolean;
+  chargesEnabled: boolean;
+  readyForPayouts: boolean;
 };

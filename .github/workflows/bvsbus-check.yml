@@ -1,0 +1,27 @@
+name: BVSBus checks
+
+on:
+  push:
+    branches:
+      - feature/bvsbus-marketplace
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  typecheck-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Legacy project typecheck (non-blocking until existing debt is fixed)
+        continue-on-error: true
+        run: npm run check
+      - name: Production build
+        run: npm run build
+      - name: Server production build
+        run: npm run build:server
