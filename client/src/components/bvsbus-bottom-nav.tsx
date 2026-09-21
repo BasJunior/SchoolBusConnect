@@ -1,7 +1,18 @@
+import { useQuery } from "@tanstack/react-query";
 import { Home, CalendarDays, MessageCircle, User, Plus } from "lucide-react";
+import type { RideConversationSummary } from "@shared/schema";
+import { useAuth } from "@/App";
 
 export default function BVSBusBottomNav() {
+  const { user } = useAuth();
   const currentPath = window.location.pathname;
+  const { data: conversations = [] } = useQuery<RideConversationSummary[]>({
+    queryKey: [`/api/ride-inbox/${user?.id || 0}`],
+    enabled: !!user,
+    refetchInterval: 15000,
+  });
+  const unreadCount = conversations.reduce((total, conversation) => total + conversation.unreadCount, 0);
+
   const itemClass = (active: boolean) =>
     `flex min-w-14 flex-col items-center gap-1 text-[11px] font-medium transition-colors ${active ? "text-black" : "text-neutral-500"}`;
 
@@ -22,8 +33,15 @@ export default function BVSBusBottomNav() {
           </span>
           <span>Offer</span>
         </a>
-        <a href="/inbox" className={itemClass(currentPath === "/inbox")}>
-          <MessageCircle className="h-5 w-5" />
+        <a href="/inbox" className={`${itemClass(currentPath === "/inbox")} relative`}>
+          <span className="relative">
+            <MessageCircle className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-3 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-black px-1 text-[10px] font-bold text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </span>
           <span>Inbox</span>
         </a>
         <a href="/profile" className={itemClass(currentPath === "/profile")}>
