@@ -20,6 +20,7 @@ import RideDetails from "@/pages/ride-details";
 import OfferRide from "@/pages/offer-ride";
 import MarketplaceTrips from "@/pages/marketplace-trips";
 import MarketplaceInbox from "@/pages/marketplace-inbox";
+import RideChat from "@/pages/ride-chat";
 import type { User } from "@shared/schema";
 
 // Simple authentication state without context for now
@@ -94,6 +95,10 @@ function AppRouter() {
 
   if (path.startsWith("/rides/")) {
     return <RideDetails />;
+  }
+
+  if (path.startsWith("/messages/")) {
+    return <RideChat />;
   }
 
   // Simple routing based on pathname
