@@ -39,6 +39,23 @@ class StripeConnectStore {
     return row ? mapRow(row) : undefined;
   }
 
+  async getByStripeAccountId(stripeAccountId: string): Promise<DriverAccountSnapshot | undefined> {
+    if (!this.isDatabaseBacked()) {
+      return Array.from(this.accounts.values()).find(
+        (account) => account.stripeAccountId === stripeAccountId,
+      );
+    }
+
+    const db = await this.database();
+    const [row] = await db
+      .select()
+      .from(rideDriverAccounts)
+      .where(eq(rideDriverAccounts.stripeAccountId, stripeAccountId))
+      .limit(1);
+
+    return row ? mapRow(row) : undefined;
+  }
+
   async save(input: {
     driverId: number;
     driverName: string;
