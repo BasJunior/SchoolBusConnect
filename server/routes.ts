@@ -12,7 +12,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ 
       status: "healthy", 
       timestamp: new Date().toISOString(),
-      service: "omnibus-transport-api",\n      marketplaceStorage: rideStore.isDatabaseBacked() ? "postgres" : "memory" 
+      service: "omnibus-transport-api",
+      marketplaceStorage: rideStore.isDatabaseBacked() ? "postgres" : "memory" 
     });
   });
 
