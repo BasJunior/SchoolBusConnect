@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, CalendarDays, MapPin, Search, Star, Users } from "lucide-react";
 import type { RideOffer } from "@shared/schema";
 import BVSBusBottomNav from "@/components/bvsbus-bottom-nav";
+import BVSBusMap from "@/components/bvsbus-map";
 
 function money(value: number, currency: string) {
   return new Intl.NumberFormat("en", { style: "currency", currency }).format(value);
@@ -33,17 +34,22 @@ export default function BVSBusHome() {
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-28 text-neutral-950">
-      <header className="bg-white px-5 pb-5 pt-6">
-        <div className="mx-auto max-w-xl">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-neutral-500">Ride together</p>
-              <h1 className="text-3xl font-black tracking-tight">BVSBus</h1>
-            </div>
-            <a href="/profile" className="grid h-10 w-10 place-items-center rounded-full bg-neutral-100 font-bold">B</a>
-          </div>
+      <section className="relative">
+        <BVSBusMap />
 
-          <form onSubmit={submit} className="rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[600] px-5 pt-5">
+          <div className="pointer-events-auto mx-auto flex max-w-xl items-center justify-between text-white">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/75">Ride together</p>
+              <h1 className="text-2xl font-black tracking-tight">BVSBus</h1>
+            </div>
+            <a href="/profile" className="grid h-10 w-10 place-items-center rounded-full bg-white font-bold text-black shadow-lg">B</a>
+          </div>
+        </div>
+
+        <div className="relative z-[650] -mt-16 px-5">
+          <form onSubmit={submit} className="mx-auto max-w-xl rounded-[28px] border border-neutral-200 bg-white p-4 shadow-xl">
+            <p className="mb-2 text-sm font-bold">Where are you going?</p>
             <div className="relative">
               <span className="absolute left-[11px] top-[22px] h-[58px] w-px bg-neutral-300" />
               <label className="flex items-center gap-3 border-b border-neutral-100 py-3">
@@ -87,7 +93,11 @@ export default function BVSBusHome() {
                   className="w-full bg-transparent outline-none"
                   aria-label="Passengers"
                 >
-                  {[1, 2, 3, 4].map((count) => <option key={count} value={count}>{count} passenger{count > 1 ? "s" : ""}</option>)}
+                  {[1, 2, 3, 4].map((count) => (
+                    <option key={count} value={count}>
+                      {count} passenger{count > 1 ? "s" : ""}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -98,7 +108,7 @@ export default function BVSBusHome() {
             </button>
           </form>
         </div>
-      </header>
+      </section>
 
       <main id="main-content" className="mx-auto max-w-xl px-5 py-5">
         <div className="mb-4 overflow-hidden rounded-3xl bg-neutral-900 p-5 text-white">
@@ -133,14 +143,20 @@ export default function BVSBusHome() {
         ) : (
           <div className="space-y-3">
             {rides.map((ride) => (
-              <a key={ride.id} href={`/rides/${ride.id}`} className="block rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm transition-transform active:scale-[0.99]">
+              <a
+                key={ride.id}
+                href={`/rides/${ride.id}`}
+                className="block rounded-3xl border border-neutral-200 bg-white p-4 shadow-sm transition-transform active:scale-[0.99]"
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs font-medium text-neutral-500">
                       {new Date(ride.departureAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })} · {new Date(ride.departureAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
                     <div className="mt-2 flex items-center gap-2 text-lg font-bold">
-                      <span>{ride.origin}</span><ArrowRight className="h-4 w-4" /><span>{ride.destination}</span>
+                      <span>{ride.origin}</span>
+                      <ArrowRight className="h-4 w-4" />
+                      <span>{ride.destination}</span>
                     </div>
                   </div>
                   <div className="text-right">
@@ -148,21 +164,29 @@ export default function BVSBusHome() {
                     <p className="text-xs text-neutral-500">per seat</p>
                   </div>
                 </div>
+
                 <div className="mt-4 flex items-center justify-between border-t border-neutral-100 pt-3">
                   <div className="flex items-center gap-2">
-                    <div className="grid h-9 w-9 place-items-center rounded-full bg-neutral-100 font-bold">{ride.driverName.slice(0, 1)}</div>
+                    <div className="grid h-9 w-9 place-items-center rounded-full bg-neutral-100 font-bold">
+                      {ride.driverName.slice(0, 1)}
+                    </div>
                     <div>
                       <p className="text-sm font-semibold">{ride.driverName}</p>
-                      <p className="flex items-center gap-1 text-xs text-neutral-500"><Star className="h-3 w-3 fill-current" /> {ride.driverRating || "New"}</p>
+                      <p className="flex items-center gap-1 text-xs text-neutral-500">
+                        <Star className="h-3 w-3 fill-current" /> {ride.driverRating || "New"}
+                      </p>
                     </div>
                   </div>
-                  <p className="text-sm font-medium">{ride.seatsAvailable} seat{ride.seatsAvailable === 1 ? "" : "s"} left</p>
+                  <p className="text-sm font-medium">
+                    {ride.seatsAvailable} seat{ride.seatsAvailable === 1 ? "" : "s"} left
+                  </p>
                 </div>
               </a>
             ))}
           </div>
         )}
       </main>
+
       <BVSBusBottomNav />
     </div>
   );
