@@ -87,7 +87,8 @@ function AppRouter() {
   }
 
   // Allow homepage access without login for demonstration
-  const isPublicRide = path.startsWith("/rides/");\n  if (!user && path !== "/" && path !== "/login" && !isPublicRide) {
+  const isPublicRide = path.startsWith("/rides/");
+  if (!user && path !== "/" && path !== "/login" && !isPublicRide) {
     return <Login />;
   }
 
