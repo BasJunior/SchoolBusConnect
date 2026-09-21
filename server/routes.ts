@@ -634,6 +634,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/ride-offers/:id/start", async (req, res) => {
+    try {
+      const { driverId } = z.object({ driverId: z.number().int().positive() }).parse(req.body);
+      const ride = await rideStore.startRide(Number(req.params.id), driverId);
+      res.json(ride);
+    } catch (error: any) {
+      const message = error?.message || "Failed to start ride";
+      const status = message.includes("does not belong") ? 403 : message.includes("not found") ? 404 : 400;
+      res.status(status).json({ message });
+    }
+  });
+
+  app.post("/api/ride-offers/:id/complete", async (req, res) => {
+    try {
+      const { driverId } = z.object({ driverId: z.number().int().positive() }).parse(req.body);
+      const ride = await rideStore.completeRide(Number(req.params.id), driverId);
+      res.json(ride);
+    } catch (error: any) {
+      const message = error?.message || "Failed to complete ride";
+      const status = message.includes("does not belong") ? 403 : message.includes("not found") ? 404 : 400;
+      res.status(status).json({ message });
+    }
+  });
+
   app.post("/api/ride-offers/:id/cancel", async (req, res) => {
     try {
       const { driverId } = z.object({ driverId: z.number().int().positive() }).parse(req.body);
