@@ -7,6 +7,13 @@ import BVSBusBottomNav from "@/components/bvsbus-bottom-nav";
 
 type ReservationEntry = { reservation: RideReservation; offer: RideOffer };
 
+function tripLabel(reservation: RideReservation, offer: RideOffer) {
+  if (reservation.status === "cancelled") return "Cancelled";
+  if (reservation.status === "completed" || offer.status === "completed") return "Completed";
+  if (offer.status === "in_progress") return "In progress";
+  return "Confirmed";
+}
+
 function paymentLabel(reservation: RideReservation) {
   if (reservation.refundStatus === "pending") return "Refund pending";
   if (reservation.paymentStatus === "refunded") return "Refunded";
@@ -92,7 +99,7 @@ export default function MarketplaceTrips() {
                   <div className="mt-3 flex items-center justify-between gap-3 border-t border-neutral-100 pt-3 text-sm">
                     <div>
                       <span className={reservation.status === "cancelled" ? "text-neutral-400" : "font-medium"}>
-                        {reservation.seats} seat{reservation.seats > 1 ? "s" : ""} · {reservation.status === "cancelled" ? "Cancelled" : "Confirmed"}
+                        {reservation.seats} seat{reservation.seats > 1 ? "s" : ""} · {tripLabel(reservation, offer)}
                       </span>
                       <p className="mt-1 text-xs text-neutral-500">
                         {reservation.total.toFixed(2)} {reservation.currency} · {paymentLabel(reservation)}
