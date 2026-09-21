@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, updateUserSchema, insertBookingSchema, insertMessageSchema, insertDriverRouteSchema, insertDriverAvailabilitySchema } from "@shared/schema";
 import { z } from "zod";
-import { rideMarketplace } from "./ride-marketplace";
+import { rideStore } from "./ride-store";
 import { createRideOfferSchema, reserveRideSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -12,7 +12,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ 
       status: "healthy", 
       timestamp: new Date().toISOString(),
-      service: "omnibus-transport-api" 
+      service: "omnibus-transport-api",\n      marketplaceStorage: rideStore.isDatabaseBacked() ? "postgres" : "memory" 
     });
   });
 
@@ -597,7 +597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // BVSBus peer-to-peer ride marketplace
   app.get("/api/ride-offers", async (req, res) => {
     const seats = req.query.seats ? Number(req.query.seats) : undefined;
-    const offers = rideMarketplace.list({
+    const offers = await rideStore.list({
       from: typeof req.query.from === "string" ? req.query.from : undefined,
       to: typeof req.query.to === "string" ? req.query.to : undefined,
       date: typeof req.query.date === "string" ? req.query.date : undefined,
@@ -607,11 +607,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/ride-offers/driver/:driverId", async (req, res) => {
-    res.json(rideMarketplace.offersForDriver(Number(req.params.driverId)));
+    res.json(await rideStore.offersForDriver(Number(req.params.driverId)));
   });
 
   app.get("/api/ride-offers/:id", async (req, res) => {
-    const offer = rideMarketplace.get(Number(req.params.id));
+    const offer = await rideStore.get(Number(req.params.id));
     if (!offer) return res.status(404).json({ message: "Ride offer not found" });
     res.json(offer);
   });
@@ -622,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const driver = await storage.getUser(input.driverId);
       if (!driver) return res.status(404).json({ message: "Driver not found" });
 
-      const offer = rideMarketplace.createOffer(
+      const offer = await rideStore.createOffer(
         input,
         driver.fullName,
         Number(driver.rating || 0),
@@ -639,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const passenger = await storage.getUser(input.passengerId);
       if (!passenger) return res.status(404).json({ message: "Passenger not found" });
 
-      const reservation = rideMarketplace.reserve(
+      const reservation = await rideStore.reserve(
         Number(req.params.id),
         input.passengerId,
         passenger.fullName,
@@ -653,11 +653,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.get("/api/ride-reservations/user/:userId", async (req, res) => {
-    res.json(rideMarketplace.reservationsForPassenger(Number(req.params.userId)));
+    res.json(await rideStore.reservationsForPassenger(Number(req.params.userId)));
   });
 
   app.get("/api/ride-reservations/driver/:driverId", async (req, res) => {
-    res.json(rideMarketplace.reservationsForDriver(Number(req.params.driverId)));
+    res.json(await rideStore.reservationsForDriver(Number(req.params.driverId)));
   });
 
   const httpServer = createServer(app);
