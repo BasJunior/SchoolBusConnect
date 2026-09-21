@@ -91,6 +91,10 @@ function AppRouter() {
     return <Login />;
   }
 
+  if (path.startsWith("/rides/")) {
+    return <RideDetails />;
+  }
+
   // Simple routing based on pathname
   switch (path) {
     case '/offer':
