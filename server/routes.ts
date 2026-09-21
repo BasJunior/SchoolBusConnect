@@ -637,6 +637,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ride-offers/:id/reserve", async (req, res) => {
     try {
       const input = reserveRideSchema.parse(req.body);
+      const offer = await rideStore.get(Number(req.params.id));
+      if (!offer) return res.status(404).json({ message: "Ride offer not found" });
+      if (offer.driverId === input.passengerId) {
+        return res.status(400).json({ message: "Drivers cannot reserve seats on their own ride" });
+      }
+
       const passenger = await storage.getUser(input.passengerId);
       if (!passenger) return res.status(404).json({ message: "Passenger not found" });
 
