@@ -227,7 +227,24 @@ export const rideReservations = pgTable("ride_reservations", {
   paymentStatus: text("payment_status").notNull().default("unpaid"),
   paymentProvider: text("payment_provider"),
   paymentIntentId: text("payment_intent_id"),
+  checkoutSessionId: text("checkout_session_id"),
+  chargeId: text("charge_id"),
+  transferId: text("transfer_id"),
+  transferStatus: text("transfer_status").notNull().default("not_ready"),
   refundStatus: text("refund_status").notNull().default("not_required"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const rideDriverAccounts = pgTable("ride_driver_accounts", {
+  id: serial("id").primaryKey(),
+  driverId: integer("driver_id").notNull(),
+  driverName: text("driver_name").notNull(),
+  stripeAccountId: text("stripe_account_id").notNull(),
+  country: text("country").notNull().default("DE"),
+  detailsSubmitted: boolean("details_submitted").notNull().default(false),
+  payoutsEnabled: boolean("payouts_enabled").notNull().default(false),
+  chargesEnabled: boolean("charges_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -334,6 +351,8 @@ export type RideOfferRow = typeof rideOffers.$inferSelect;
 export type InsertRideOfferRow = typeof rideOffers.$inferInsert;
 export type RideReservationRow = typeof rideReservations.$inferSelect;
 export type InsertRideReservationRow = typeof rideReservations.$inferInsert;
+export type RideDriverAccountRow = typeof rideDriverAccounts.$inferSelect;
+export type InsertRideDriverAccountRow = typeof rideDriverAccounts.$inferInsert;
 export type RideMessageRow = typeof rideMessages.$inferSelect;
 export type InsertRideMessageRow = typeof rideMessages.$inferInsert;
 
@@ -430,6 +449,10 @@ export type RideReservation = {
   paymentStatus: "unpaid" | "pending" | "paid" | "failed" | "refunded";
   paymentProvider: "stripe" | null;
   paymentIntentId: string | null;
+  checkoutSessionId: string | null;
+  chargeId: string | null;
+  transferId: string | null;
+  transferStatus: "not_ready" | "awaiting_onboarding" | "pending" | "transferred" | "failed";
   refundStatus: "not_required" | "pending" | "succeeded" | "failed";
   createdAt: string;
 };
@@ -458,4 +481,14 @@ export type RideConversationSummary = {
   lastMessage: string;
   lastMessageAt: string;
   unreadCount: number;
+};
+
+
+export type StripeConnectStatus = {
+  driverId: number;
+  stripeAccountId: string | null;
+  detailsSubmitted: boolean;
+  payoutsEnabled: boolean;
+  chargesEnabled: boolean;
+  readyForPayouts: boolean;
 };
